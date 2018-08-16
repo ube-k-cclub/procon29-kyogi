@@ -8,7 +8,7 @@ from PIL import Image
 from pyzbar import pyzbar
 
 def QRpushed():
-    qrimg = Image.open('qrsample.png')
+    qrimg = Image.open('img/qrsample.png')
     strings = pyzbar.decode(qrimg)
     print(strings)
     
