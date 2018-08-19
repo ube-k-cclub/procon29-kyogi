@@ -21,7 +21,7 @@ class Field:
         pass
         
 def QRpushed():
-    qrimg = Image.open('img/qrsample.png')
+    qrimg = Image.open('../img/qrsample.png')
     fdata = pyzbar.decode(qrimg)[0][0].decode('utf-8')
     fieldGenerate(fdata) 
 
