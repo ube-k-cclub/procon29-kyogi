@@ -29,9 +29,9 @@ class Square:
         if self.state == FREE:
             return "#ffffff"
         elif self.state == OWN:
-            return "#ffb6c1"
-        elif self.state == ENEMY:
             return "#87ceeb"
+        elif self.state == ENEMY:
+            return "#ffb6c1"
 
     # setter
     def setPoint(self, value):
@@ -58,8 +58,8 @@ class Field:
                      [data[self.height+2][0], data[self.height+2][1]]]
 
         # 両チームの初期陣地を設定
-        self.sqs[sdefault[0][0]][sdefault[0][1]].setState(OWN)
-        self.sqs[sdefault[1][0]][sdefault[1][1]].setState(OWN)
+        self.sqs[sdefault[0][0] - 1][sdefault[0][1] - 1].setState(OWN)
+        self.sqs[sdefault[1][0] - 1][sdefault[1][1] - 1].setState(OWN)
 
 # ------------------------------
 # 関数定義 
