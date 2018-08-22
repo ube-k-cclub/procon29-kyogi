@@ -16,9 +16,15 @@ FREE, OWN, ENEMY = 0, 1, 2
 class Square:
     state = FREE
     point = 0
+    label = None
     
-    def __init__(self, value):
+    def __init__(self, value, master):
         self.setPoint(value)
+        self.label = ttk.Label(
+            master,
+            text = str(self.getPoint()),
+            background = self.getColor(),
+            padding = (5, 10))
 
     # getter
     def getPoint(self):
@@ -38,20 +44,21 @@ class Square:
         self.point = value
     def setState(self, value):
         self.state = value
+        self.label["background"] = self.getColor()
 
 class Field:
     height, width = 12, 12
     sqs = [[0 for i in range(12)] for j in range(12)] 
     
-    def __init__(self, data):
-        self.genField(data)
+    def __init__(self, data, master):
+        self.genField(data, master)
 
-    def genField(self, data):
+    def genField(self, data, master):
         self.height, self.width = data[0][0], data[0][1]
 
         for i in range(self.height):
             for j in range(self.width):
-                self.sqs[i][j] = Square(data[i+1][j])
+                self.sqs[i][j] = Square(data[i+1][j], master)
         
         # 自エージェントの初期位置を取得
         sdefault = [[data[self.height+1][0], data[self.height+1][1]], \
@@ -94,7 +101,7 @@ class FieldFrame(Frame):
         self.genButton = ttk.Button(
             self,
             text="Generate Field",
-            command=self.generateField,
+            command=self.showField,
             )
         self.genButton.grid(row=0, column=0)
 
@@ -104,22 +111,11 @@ class FieldFrame(Frame):
         self.grid(row=0, column=0)
         self.init()
 
-    def generateField(self):
-        self.genButton.destroy()
-        self.showField()
-
     def showField(self):
-        squareLabel = [[None for i in range(self.field.width)] for j in range(self.field.height)]
+        self.genButton.destroy()
         for i in range(self.field.height):
             for j in range(self.field.width):
-                temp = self.field.sqs[i][j].getPoint()
-                color = self.field.sqs[i][j].getColor()
-                squareLabel[i][j] = ttk.Label(
-                    self,
-                    text = str(temp),
-                    background = color,
-                    padding = (5, 10))
-                squareLabel[i][j].grid(row=i+1, column=j+1)
+                self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
 
 class QRButtonFrame(Frame):
     nextfrm = None
@@ -143,7 +139,7 @@ class QRButtonFrame(Frame):
     def pushed(self):
         qrimg = Image.open('../img/qrsample.png')
         fdata = pyzbar.decode(qrimg)[0][0].decode('utf-8')
-        self.nextfrm.field = Field(dataParse(fdata))
+        self.nextfrm.field = Field(dataParse(fdata), self.nextfrm)
         self.master.withdraw()
 
 def main():
