@@ -12,6 +12,7 @@ from pyzbar import pyzbar
 # クラス定義
 # ------------------------------
 FREE, OWN, ENEMY = 0, 1, 2
+mode = OWN
 
 class Square:
     _state = FREE
@@ -32,8 +33,8 @@ class Square:
 
     def __clicked(self, event):
         if self.getState() == FREE:
-            self.setState(OWN)
-        elif self.getState() == OWN:
+            self.setState(mode)
+        else:
             self.setState(FREE)
 
 
@@ -128,6 +129,31 @@ class FieldFrame(Frame):
             for j in range(self.field.width):
                 self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
 
+class ModeFrame(Frame):
+    modeLabel = None
+
+    def __initWidget(self):
+        self.modeLabel = ttk.Label(
+            self,
+            text = str(mode),
+            )
+        self.modeLabel.bind("<1>", self.__changeMode)
+        self.modeLabel.grid(row=0, column=0)
+
+    def __init__(self, master = None):
+        Frame.__init__(self, master)
+        self.grid(row=0, column=0)
+        self.__initWidget()
+
+    def __changeMode(self, event):
+        global mode
+        if mode == OWN:
+            mode = ENEMY  
+        else:
+            mode = OWN
+
+        self.modeLabel["text"] = mode
+
 class QRButtonFrame(Frame):
     nextfrm = None
     master = None
@@ -161,6 +187,9 @@ def main():
 
     fldfrm = FieldFrame(root)
     fldfrm.grid(row=0, column=0)
+
+    modfrm = ModeFrame(root)
+    modfrm.grid(row=1, column=0)
 
     showQRwindow(fldfrm)
     
