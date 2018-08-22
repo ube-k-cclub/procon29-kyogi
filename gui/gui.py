@@ -14,8 +14,8 @@ from pyzbar import pyzbar
 FREE, OWN, ENEMY = 0, 1, 2
 
 class Square:
-    state = FREE
-    point = 0
+    _state = FREE
+    _point = 0
     label = None
     
     def __init__(self, value, master):
@@ -25,25 +25,33 @@ class Square:
             text = str(self.getPoint()),
             background = self.getColor(),
             padding = (5, 10))
+        self.label.bind("<1>", self.__clicked)
+
+    def __clicked(self, event):
+        if self.getState() == FREE:
+            self.setState(OWN)
+        elif self.getState() == OWN:
+            self.setState(FREE)
+
 
     # getter
     def getPoint(self):
-        return self.point
+        return self._point
     def getState(self):
-        return self.state
+        return self._state
     def getColor(self):
-        if self.state == FREE:
+        if self._state == FREE:
             return "#ffffff"
-        elif self.state == OWN:
+        elif self._state == OWN:
             return "#87ceeb"
-        elif self.state == ENEMY:
+        elif self._state == ENEMY:
             return "#ffb6c1"
 
     # setter
     def setPoint(self, value):
-        self.point = value
+        self._point = value
     def setState(self, value):
-        self.state = value
+        self._state = value
         self.label["background"] = self.getColor()
 
 class Field:
