@@ -24,7 +24,10 @@ class Square:
             master,
             text = str(self.getPoint()),
             background = self.getColor(),
-            padding = (5, 10))
+            font = ("", 18),
+            width = 2,
+            padding = (5, 5)
+            )
         self.label.bind("<1>", self.__clicked)
 
     def __clicked(self, event):
