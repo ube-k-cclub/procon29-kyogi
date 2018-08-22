@@ -11,10 +11,11 @@ from pyzbar import pyzbar
 # ------------------------------
 # クラス定義
 # ------------------------------
+FREE, OWN, ENEMY = 0, 1, 2
+
 class Square:
-    FREE = 0; OWN = 1; ENEMY = 2;
     state = FREE
-    point = 0;
+    point = 0
     
     def __init__(self, value):
         self.setPoint(value)
@@ -24,6 +25,13 @@ class Square:
         return self.point
     def getState(self):
         return self.state
+    def getColor(self):
+        if self.state == FREE:
+            return "#ffffff"
+        elif self.state == OWN:
+            return "#ffb6c1"
+        elif self.state == ENEMY:
+            return "#87ceeb"
 
     # setter
     def setPoint(self, value):
@@ -32,25 +40,26 @@ class Square:
         self.state = value
 
 class Field:
-    height = 12; width = 12
+    height, width = 12, 12
     sqs = [[0 for i in range(12)] for j in range(12)] 
     
     def __init__(self, data):
         self.genField(data)
 
     def genField(self, data):
-        self.height = data[0][0]; self.width = data[0][1]
+        self.height, self.width = data[0][0], data[0][1]
+
         for i in range(self.height):
             for j in range(self.width):
                 self.sqs[i][j] = Square(data[i+1][j])
         
-    # デバッグ用(コンソールにフィールドを展開)
-    def showFieldList(self):
-        for i in range(self.height):
-            for j in range(self.width):
-                print(str("{0:2d}".format(self.sqs[i][j].getPoint())) + " ", end="")
-            print("\n")
+        # 自エージェントの初期位置を取得
+        sdefault = [[data[self.height+1][0], data[self.height+1][1]], \
+                     [data[self.height+2][0], data[self.height+2][1]]]
 
+        # 両チームの初期陣地を設定
+        self.sqs[sdefault[0][0]][sdefault[0][1]].setState(OWN)
+        self.sqs[sdefault[1][0]][sdefault[1][1]].setState(OWN)
 
 # ------------------------------
 # 関数定義 
@@ -65,7 +74,7 @@ def dataParse(qdata):
     for i in range(len(data)):
         # データを1つずつのint値に変換してリスト化
         data[i] = list(map(int, data[i].split()))
-    
+
     return data
 
 def showQRwindow(fldfrm):
@@ -104,10 +113,11 @@ class FieldFrame(Frame):
         for i in range(self.field.height):
             for j in range(self.field.width):
                 temp = self.field.sqs[i][j].getPoint()
+                color = self.field.sqs[i][j].getColor()
                 squareLabel[i][j] = ttk.Label(
                     self,
                     text = str(temp),
-                    background = "#ffffff",
+                    background = color,
                     padding = (5, 10))
                 squareLabel[i][j].grid(row=i+1, column=j+1)
 
