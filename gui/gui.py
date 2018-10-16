@@ -2,7 +2,7 @@
 
 # GUI
 from tkinter import *
-from tkinter import ttk
+from tkinter.ttk import *
 
 # 画像処理
 from PIL import Image
@@ -21,11 +21,12 @@ class Square:
     
     def __init__(self, value, master):
         self.setPoint(value)
-        self.label = ttk.Label(
+        self.label = Label(
             master,
             text = str(self.getPoint()),
+            foreground = "#ffffff",
             background = self.getColor(),
-            font = ("", 18),
+            font = ("Migu 1C", 18),
             width = 2,
             padding = (5, 5)
             )
@@ -45,7 +46,7 @@ class Square:
         return self._state
     def getColor(self):
         if self._state == FREE:
-            return "#ffffff"
+            return "#161616"
         elif self._state == OWN:
             return "#87ceeb"
         elif self._state == ENEMY:
@@ -96,10 +97,10 @@ def dataParse(qdata):
 
     return data
 
-def showQRwindow(fldfrm):
+def showQRwindow(swtfrm):
     subWindow = Toplevel()
 
-    btnfrm = QRButtonFrame(fldfrm, subWindow)
+    btnfrm = QRButtonFrame(swtfrm, subWindow)
     btnfrm.grid(row=0, column=0)
 
 # ------------------------------
@@ -110,7 +111,7 @@ class FieldFrame(Frame):
     genButton = None
 
     def init(self):
-        self.genButton = ttk.Button(
+        self.genButton = Button(
             self,
             text="Generate Field",
             command=self.showField,
@@ -120,6 +121,9 @@ class FieldFrame(Frame):
     def __init__(self, master = None):
         self.master = master
         Frame.__init__(self, master)
+        self['height'] = 480
+        self['width'] = 640
+        # self['background'] = "#161616"
         self.grid(row=0, column=0)
         self.init()
 
@@ -129,11 +133,11 @@ class FieldFrame(Frame):
             for j in range(self.field.width):
                 self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
 
-class ModeFrame(Frame):
+class SwitchFrame(Frame):
     modeLabel = None
 
     def __initWidget(self):
-        self.modeLabel = ttk.Label(
+        self.modeLabel = Label(
             self,
             text = str(mode),
             )
@@ -159,7 +163,7 @@ class QRButtonFrame(Frame):
     master = None
 
     def init(self):
-        button = ttk.Button(
+        button = Button(
                 self, 
                 text="read QRcode", 
                 command = self.pushed
@@ -182,16 +186,22 @@ class QRButtonFrame(Frame):
 def main():
     root = Tk()
     root.title("Procon29 solver"); root.geometry("640x480")
-    root.grid_rowconfigure(0, weight=1)
-    root.grid_columnconfigure(0, weight=1)
+    root.grid_rowconfigure(0, weight=2)
+    root.grid_columnconfigure(0, weight=2)
+    root.configure(bg="#161616")
 
-    fldfrm = FieldFrame(root)
-    fldfrm.grid(row=0, column=0)
+    style = Style()
+    style.configure(".", font=("Migu 1C", 10))
+    style.configure(".", foreground = "#ffffff")
+    style.configure(".", background = "#161616")
 
-    modfrm = ModeFrame(root)
+    swtfrm = FieldFrame(root)
+    swtfrm.grid(row=1, column=1)
+
+    modfrm = SwitchFrame(root)
     modfrm.grid(row=1, column=0)
 
-    showQRwindow(fldfrm)
+    showQRwindow(swtfrm)
     
     field = None
 
