@@ -5,7 +5,7 @@ from tkinter import *
 from tkinter.ttk import *
 
 # 画像処理
-from PIL import Image
+from PIL import Image, ImageTk
 from pyzbar import pyzbar
 import cv2
 
@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 # ------------------------------
-# クラス定義
+# GUIパーツ
 # ------------------------------
 FREE, OWN, ENEMY = 0, 1, 2
 
@@ -150,6 +150,26 @@ class Field:
         self.pown[1].player = 1
         self.pown[1].setFg(2)
 
+class GearSwitch:
+    index = -1
+    gear = 0
+    gearButton = [None for i in range(3)]
+
+    def __init__(self, master, index):
+        self.index = index
+        self.switchTitle = Label(
+            master,
+            text = "Gear Player" + str(index + 1),
+            )
+        self.switchTitle.grid()
+        for i in range(3):
+            self.gearButton[i] = Button(
+                master,
+                text = "mode" + str(i+1),
+                )
+            # self.gearButton[i].place(x=20+i*72, y=200)
+            self.gearButton[i].grid()
+
 # ------------------------------
 # 関数定義 
 # ------------------------------
@@ -202,6 +222,28 @@ def readQR(nextfrm):
 # ------------------------------
 # フレーム定義
 # ------------------------------
+# 左側の領域
+class DetailFrame(Frame):
+    currentTurn = 1 # 現在のターン
+    maxTurn = 60 # 総ターン数
+    gearSwitch = [None, None]
+
+    def init(self):
+        self.turnLabel = Label(
+            self,
+            text=str(self.currentTurn) + "/" + str(self.maxTurn),
+            )
+        self.turnLabel.grid(row=0, column=0)
+        self.gearSwitch[0] = GearSwitch(self, 0)
+        self.gearSwitch[1] = GearSwitch(self, 1)
+
+    def __init__(self, master = None):
+        self.master = master
+        Frame.__init__(self, master)
+        self.grid(row=0, column=0)
+        self.init()
+
+# 右側の領域
 class FieldFrame(Frame):
     field = None
 
@@ -215,34 +257,13 @@ class FieldFrame(Frame):
             for j in range(self.field.width):
                 self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
 
-class DetailFrame(Frame):
-    turn = None
-
-    def init(self):
-        self.turn = Label(
-            self,
-            text="40/40TURN",
-            )
-        self.turn.grid(row=0, column=0)
-
-    def __init__(self, master = None):
-        self.master = master
-        Frame.__init__(self, master)
-        self.grid(row=0, column=0)
-        self.init()
-
-class SwitchFrame(Frame):
-    def __init__(self, master = None):
-        Frame.__init__(self, master)
-        self.grid(row=0, column=0)
-
 # ------------------------------
 # main
 # ------------------------------
 def main():
     root = Tk()
     root.title("Lexus - Procon29 solver"); root.geometry("640x480")
-    root.grid_rowconfigure(0, weight=2)
+    root.grid_rowconfigure(0, weight=1)
     root.grid_columnconfigure(0, weight=2)
     root.configure(bg="#161616")
 
@@ -253,11 +274,8 @@ def main():
 
     fldfrm = FieldFrame(root)
     readQR(fldfrm)
-    fldfrm.grid(row=1, column=1)
+    fldfrm.grid(row=0, column=1)
 
-    swtfrm = SwitchFrame(root)
-    swtfrm.grid(row=1, column=0)
-    
     dtlfrm = DetailFrame(root)
     dtlfrm.grid(row=0, column=0)
 
