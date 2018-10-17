@@ -156,12 +156,7 @@ def dataParse(qdata):
 
     return data
 
-def showQRwindow(swtfrm):
-    subWindow = Toplevel()
-
-    btnfrm = QRButtonFrame(swtfrm, subWindow)
-    btnfrm.grid(row=0, column=0)
-
+# QRコードを読む際のコントラスト調整
 def edit_contrast(image, gamma):
     look_up_table = [np.uint8(255.0 / (1 + np.exp(-gamma * (i - 128.) / 255.)))
         for i in range(256)]
@@ -231,6 +226,9 @@ class SwitchFrame(Frame):
         Frame.__init__(self, master)
         self.grid(row=0, column=0)
 
+# ------------------------------
+# main
+# ------------------------------
 def main():
     root = Tk()
     root.title("Procon29 solver"); root.geometry("640x480")
