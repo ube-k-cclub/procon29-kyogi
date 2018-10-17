@@ -191,6 +191,7 @@ def readQR(nextfrm):
         if len(codes) > 0:
             fdata = codes[0][0].decode('utf-8')
             nextfrm.field = Field(dataParse(fdata), nextfrm)
+            nextfrm.showField()
             break
 
 # ------------------------------
@@ -198,24 +199,13 @@ def readQR(nextfrm):
 # ------------------------------
 class FieldFrame(Frame):
     field = None
-    genButton = None
-
-    def init(self):
-        self.genButton = Button(
-            self,
-            text="Generate Field",
-            command=self.showField,
-            )
-        self.genButton.grid(row=0, column=0)
 
     def __init__(self, master = None):
         self.master = master
         Frame.__init__(self, master)
         self.grid(row=0, column=0)
-        self.init()
 
     def showField(self):
-        self.genButton.destroy()
         for i in range(self.field.height):
             for j in range(self.field.width):
                 self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
@@ -254,6 +244,7 @@ def main():
     style.configure(".", background = "#161616")
 
     fldfrm = FieldFrame(root)
+    readQR(fldfrm)
     fldfrm.grid(row=1, column=1)
 
     swtfrm = SwitchFrame(root)
@@ -261,9 +252,6 @@ def main():
     
     dtlfrm = DetailFrame(root)
     dtlfrm.grid(row=0, column=0)
-
-    field = None
-    readQR(fldfrm)
 
     root.mainloop()
 
