@@ -241,7 +241,7 @@ class SwitchFrame(Frame):
 # ------------------------------
 def main():
     root = Tk()
-    root.title("Procon29 solver"); root.geometry("640x480")
+    root.title("Lexus - Procon29 solver"); root.geometry("640x480")
     root.grid_rowconfigure(0, weight=2)
     root.grid_columnconfigure(0, weight=2)
     root.configure(bg="#161616")
