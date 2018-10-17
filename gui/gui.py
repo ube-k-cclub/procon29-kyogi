@@ -171,6 +171,28 @@ def edit_contrast(image, gamma):
     result_image = result_image.reshape(image.shape)
     return result_image
  
+def readQR(nextfrm):
+    capture = cv2.VideoCapture(0)
+    if capture.isOpened() is False:
+        raise("IO Error")
+ 
+    while True:
+        ret, frame = capture.read()
+        if ret == False:
+            continue
+        
+        # グレースケール化してコントラストを調整する
+        gray_scale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        image = edit_contrast(gray_scale, 5)
+ 
+        # 加工した画像からフレームQRコードを取得してデコードする
+        codes = pyzbar.decode(image)
+ 
+        if len(codes) > 0:
+            fdata = codes[0][0].decode('utf-8')
+            nextfrm.field = Field(dataParse(fdata), nextfrm)
+            break
+
 # ------------------------------
 # フレーム定義
 # ------------------------------
@@ -219,48 +241,6 @@ class SwitchFrame(Frame):
         Frame.__init__(self, master)
         self.grid(row=0, column=0)
 
-class QRButtonFrame(Frame):
-    nextfrm = None
-    master = None
-
-    def init(self):
-        button = Button(
-                self, 
-                text="read QRcode", 
-                command = self.pushed
-                )
-        button.grid(row=0, column=0)
-
-    def __init__(self, nextfrm, master = None):
-        self.nextfrm = nextfrm
-        self.master = master
-        Frame.__init__(self, master)
-        self.grid(row=0, column=0)
-        self.init()
-
-    def pushed(self):
-        capture = cv2.VideoCapture(0)
-        if capture.isOpened() is False:
-            raise("IO Error")
-     
-        while True:
-            ret, frame = capture.read()
-            if ret == False:
-                continue
-            
-            # グレースケール化してコントラストを調整する
-            gray_scale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            image = edit_contrast(gray_scale, 5)
-     
-            # 加工した画像からフレームQRコードを取得してデコードする
-            codes = pyzbar.decode(image)
-     
-            if len(codes) > 0:
-                fdata = codes[0][0].decode('utf-8')
-                self.nextfrm.field = Field(dataParse(fdata), self.nextfrm)
-                self.master.withdraw()
-                break
-
 def main():
     root = Tk()
     root.title("Procon29 solver"); root.geometry("640x480")
@@ -282,9 +262,8 @@ def main():
     dtlfrm = DetailFrame(root)
     dtlfrm.grid(row=0, column=0)
 
-    showQRwindow(fldfrm)
-    
     field = None
+    readQR(fldfrm)
 
     root.mainloop()
 
