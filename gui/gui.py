@@ -39,6 +39,7 @@ class Square:
             padding = (2, 2)
             )
         self.label.bind("<1>", self.__Lclicked)
+        self.label.bind("<2>", self.__Mclicked)
         self.label.bind("<3>", self.__Rclicked)
 
     # 左クリックで自陣操作
@@ -49,8 +50,11 @@ class Square:
             self.getField().clicked = self
         # 既にエージェントがクリックされた後の場合
         elif self.getField().clicked != -1:
+            if self.getField().clicked == self:
+                self.getField().clicked = -1
+
             # 移動先が自陣
-            if self.getState() == OWN:
+            elif self.getState() == OWN:
                 self.setFg(self.getField().clicked.getPlayer())
                 self.getField().clicked.setFg(0)
                 self.getField().clicked = -1
@@ -65,11 +69,17 @@ class Square:
                 self.getField().clicked.setFg(0)
                 self.getField().clicked = -1
 
+    # 右クリックで敵陣操作
     def __Rclicked(self, event):
         if self.getState() == FREE:
             self.setState(ENEMY)
-            field = self.getField()
+        else:
+            self.setState(FREE)
 
+    # ミスったときの救済
+    def __Mclicked(self, event):
+        if self.getState() == FREE:
+            self.setState(OWN)
         else:
             self.setState(FREE)
 
