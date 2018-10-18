@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 import sys # CLI引数の受け取り
 
+gear = [0, 0]
+field = None
 # ------------------------------
 # GUIパーツ
 # ------------------------------
@@ -20,15 +22,14 @@ FREE, OWN, ENEMY = 0, 1, 2
 OWN1, OWN2, ENEMY1, ENEMY2 = 1, 2, 3, 4
 
 class Square:
+    global field
     label = None
     _state = FREE
     _point = 0
     _player = 0
-    _field = None
     
-    def __init__(self, value, master, field):
+    def __init__(self, value, master):
         self.setPoint(value)
-        self.setField(field)
         self.label = Label(
             master,
             text = str(self.getPoint()),
@@ -47,19 +48,19 @@ class Square:
     # 左クリックで自陣操作
     def __Lclicked(self, event):
         # エージェントのいる位置を初めてクリックしたとき
-        if self.getState() == OWN and self.getField().clicked == -1:
+        if self.getState() == OWN and field.clicked == -1:
             # クリックされたマスを保存
-            self.getField().clicked = self
+            field.clicked = self
         # 既にエージェントがクリックされた後の場合
-        elif self.getField().clicked != -1:
-            if self.getField().clicked == self:
-                self.getField().clicked = -1
+        elif field.clicked != -1:
+            if field.clicked == self:
+                field.clicked = -1
 
             # 移動先が自陣
             elif self.getState() == OWN:
-                self.setFg(self.getField().clicked.getPlayer())
-                self.getField().clicked.setFg(0)
-                self.getField().clicked = -1
+                self.setFg(field.clicked.getPlayer())
+                field.clicked.setFg(0)
+                field.clicked = -1
             # 指定先が敵陣
             elif self.getState() == ENEMY:
                 self.setState(FREE)
@@ -67,48 +68,48 @@ class Square:
             # 指定先が空白
             else:
                 self.setState(OWN)
-                self.setFg(self.getField().clicked.getPlayer())
-                self.getField().clicked.setFg(0)
-                self.getField().clicked = -1
+                self.setFg(field.clicked.getPlayer())
+                field.clicked.setFg(0)
+                field.clicked = -1
 
     # 右クリックで敵陣操作
     def __Rclicked(self, event):
         # 最初の2回は開始位置の指定を含める
-        if self.getField().startpoint == 2: 
+        if field.startpoint == 2: 
             self.setState(ENEMY)
             self.setFg(ENEMY1)
-            self.getField().startpoint -= 1
-        elif self.getField().startpoint == 1:
+            field.startpoint -= 1
+        elif field.startpoint == 1:
             self.setState(ENEMY)
             self.setFg(ENEMY2)
-            self.getField().startpoint -= 1
+            field.startpoint -= 1
             
         else: # 通常移動
             print("debug")
             # エージェントのいる位置を初めてクリックしたとき
-            if self.getState() == ENEMY and self.getField().clicked == -1:
+            if self.getState() == ENEMY and field.clicked == -1:
                 # クリックされたマスを保存
-                self.getField().clicked = self
+                field.clicked = self
             # 既にエージェントがクリックされた後の場合
-            elif self.getField().clicked != -1:
-                if self.getField().clicked == self:
-                    self.getField().clicked = -1
+            elif field.clicked != -1:
+                if field.clicked == self:
+                    field.clicked = -1
 
                 # 移動先が敵陣
                 elif self.getState() == ENEMY:
-                    self.setFg(self.getField().clicked.getPlayer())
-                    self.getField().clicked.setFg(0)
-                    self.getField().clicked = -1
+                    self.setFg(field.clicked.getPlayer())
+                    field.clicked.setFg(0)
+                    field.clicked = -1
                 # 指定先が自陣
                 elif self.getState() == OWN:
                     self.setState(FREE)
-                    self.getField().clicked = -1
+                    field.clicked = -1
                 # 指定先が空白
                 else:
                     self.setState(ENEMY)
-                    self.setFg(self.getField().clicked.getPlayer())
-                    self.getField().clicked.setFg(0)
-                    self.getField().clicked = -1
+                    self.setFg(field.clicked.getPlayer())
+                    field.clicked.setFg(0)
+                    field.clicked = -1
 
     # ミスったときの救済
     def __Mclicked(self, event):
@@ -120,8 +121,6 @@ class Square:
             self.setState(FREE)
 
     # getter
-    def getField(self):
-        return self._field
     def getPoint(self):
         return self._point
     def getState(self):
@@ -146,8 +145,6 @@ class Square:
             return "#ffffff"
 
     # setter
-    def setField(self, value):
-        self._field = value
     def setPoint(self, value):
         self._point = value
     def setState(self, value):
@@ -174,7 +171,7 @@ class Field:
 
         for i in range(self.height):
             for j in range(self.width):
-                self.sqs[i][j] = Square(data[i+1][j], master, self)
+                self.sqs[i][j] = Square(data[i+1][j], master)
         
         # 自エージェントの初期位置を取得
         sdefault = [[data[self.height+1][0], data[self.height+1][1]], \
@@ -190,7 +187,7 @@ class Field:
         self.pown[1].setFg(2)
 
 class GearSwitch:
-    gear = [0, 0]
+    global gear
     switchTitle = [None for i in range(2)]
     gearButton = [[None for i in range(3)] for j in range(2)]
 
@@ -205,12 +202,12 @@ class GearSwitch:
                 self.gearButton[i][j] = GearButton(self, master, i, j)
 
     def clicked(self, player, pushedIndex):
-        if self.gear[player] != pushedIndex:
-            self.gearButton[player][self.gear[player]].button["text"] = "mode" + str(self.gear[player] + 1)
-            self.gearButton[player][self.gear[player]].button.state(['!pressed'])
+        if gear[player] != pushedIndex:
+            self.gearButton[player][gear[player]].button["text"] = "mode" + str(gear[player] + 1)
+            self.gearButton[player][gear[player]].button.state(['!pressed'])
             self.gearButton[player][pushedIndex].button["text"] = "mode" + str(pushedIndex + 1) + " *"
             self.gearButton[player][pushedIndex].button.state(['pressed'])
-            self.gear[player] = pushedIndex
+            gear[player] = pushedIndex
 
 class GearButton:
     def __init__(self, switch, master, player, index):
@@ -256,6 +253,7 @@ def edit_contrast(image, gamma):
     return result_image
  
 def readQR(nextfrm):
+    global field
     capture = cv2.VideoCapture(0)
     if capture.isOpened() is False:
         raise("IO Error")
@@ -274,11 +272,13 @@ def readQR(nextfrm):
  
         if len(codes) > 0:
             fdata = codes[0][0].decode('utf-8')
-            nextfrm.field = Field(dataParse(fdata), nextfrm)
+            field = Field(dataParse(fdata), nextfrm)
             nextfrm.showField()
             break
 
-def makeSetUp(turn, field):
+def makeSetUp(turn):
+    global field
+
     f = open('setup.txt', 'w')
 
     # 1行目：ターン数
@@ -295,10 +295,34 @@ def makeSetUp(turn, field):
 
     f.close()
 
-def makeConnect(field):
+def makeConnect(turn):
+    global field
+    global gear
+
     f = open("connect.txt", "w")
 
+    agents = [0,0,0,0]
+
     # 1〜4行目：red1,2,blue1,2
+    for i in range(field.height):
+        for j in range(field.width):
+            if field.sqs[i][j].getPlayer() != 0:
+                agents[field.sqs[i][j].getPlayer()-1] = i*field.width + j
+
+    for i in agents:
+        f.write(str(i) + "\n")
+
+    # 5,6行目：ギア
+    for i in range(2):
+        f.write(str(gear[i] + 1) + "\n")
+
+    # 7行目：現在ターン
+    f.write(str(turn) + "\n")
+
+    # 8行目〜：パネルカラー
+    for i in range(field.height):
+        for j in range(field.width):
+            f.write(str(field.sqs[i][j].getState()) + "\n")
 
     f.close()
 
@@ -316,7 +340,13 @@ class DetailFrame(Frame):
             text=str(self.currentTurn) + "/" + str(self.maxTurn),
             )
         self.turnLabel.grid(row=0, column=0)
-        self.gearSwitch = GearSwitch(self)
+        gearSwitch = GearSwitch(self)
+        self.enterButton = Button(
+            self,
+            text = "Solve",
+            )
+        self.enterButton.grid()
+        self.enterButton.bind("<1>", self.connect)
 
     def __init__(self, turnNum, master = None):
         self.master = master
@@ -325,9 +355,12 @@ class DetailFrame(Frame):
         self.grid(row=0, column=0)
         self.init()
 
+    def connect(self, event):
+        makeConnect(self.currentTurn)
+
 # 右側の領域
 class FieldFrame(Frame):
-    field = None
+    global field
 
     def __init__(self, master = None):
         self.master = master
@@ -335,14 +368,15 @@ class FieldFrame(Frame):
         self.grid(row=0, column=0)
 
     def showField(self):
-        for i in range(self.field.height):
-            for j in range(self.field.width):
-                self.field.sqs[i][j].label.grid(row=i+1, column=j+1)
+        for i in range(field.height):
+            for j in range(field.width):
+                field.sqs[i][j].label.grid(row=i+1, column=j+1)
 
 # ------------------------------
 # main
 # ------------------------------
 def main():
+    global field
     args = sys.argv
     turnNum = args[1]
 
@@ -361,7 +395,7 @@ def main():
     readQR(fldfrm)
     fldfrm.grid(row=0, column=1)
 
-    makeSetUp(turnNum, fldfrm.field)
+    makeSetUp(turnNum)
 
     dtlfrm = DetailFrame(turnNum, root)
     dtlfrm.grid(row=0, column=0)
