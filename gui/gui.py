@@ -17,6 +17,7 @@ import sys # CLI引数の受け取り
 # GUIパーツ
 # ------------------------------
 FREE, OWN, ENEMY = 0, 1, 2
+OWN1, OWN2, ENEMY1, ENEMY2 = 1, 2, 3, 4
 
 class Square:
     label = None
@@ -72,15 +73,49 @@ class Square:
 
     # 右クリックで敵陣操作
     def __Rclicked(self, event):
-        if self.getState() == FREE:
+        # 最初の2回は開始位置の指定を含める
+        if self.getField().startpoint == 2: 
             self.setState(ENEMY)
-        else:
-            self.setState(FREE)
+            self.setFg(ENEMY1)
+            self.getField().startpoint -= 1
+        elif self.getField().startpoint == 1:
+            self.setState(ENEMY)
+            self.setFg(ENEMY2)
+            self.getField().startpoint -= 1
+            
+        else: # 通常移動
+            print("debug")
+            # エージェントのいる位置を初めてクリックしたとき
+            if self.getState() == ENEMY and self.getField().clicked == -1:
+                # クリックされたマスを保存
+                self.getField().clicked = self
+            # 既にエージェントがクリックされた後の場合
+            elif self.getField().clicked != -1:
+                if self.getField().clicked == self:
+                    self.getField().clicked = -1
+
+                # 移動先が敵陣
+                elif self.getState() == ENEMY:
+                    self.setFg(self.getField().clicked.getPlayer())
+                    self.getField().clicked.setFg(0)
+                    self.getField().clicked = -1
+                # 指定先が自陣
+                elif self.getState() == OWN:
+                    self.setState(FREE)
+                    self.getField().clicked = -1
+                # 指定先が空白
+                else:
+                    self.setState(ENEMY)
+                    self.setFg(self.getField().clicked.getPlayer())
+                    self.getField().clicked.setFg(0)
+                    self.getField().clicked = -1
 
     # ミスったときの救済
     def __Mclicked(self, event):
         if self.getState() == FREE:
             self.setState(OWN)
+        elif self.getState() == OWN:
+            self.setState(ENEMY)
         else:
             self.setState(FREE)
 
@@ -105,6 +140,8 @@ class Square:
             return "#888888"
         elif self._player == 2:
             return "#F58888"
+        elif self._player == 3 or self._player == 4:
+            return "#8888F5"
         else:
             return "#ffffff"
 
@@ -122,6 +159,7 @@ class Square:
 
 class Field:
     height, width = 12, 12
+    startpoint = 2
     sqs = [[0 for i in range(12)] for j in range(12)] 
 
     pown = [None, None]
@@ -254,6 +292,13 @@ def makeSetUp(turn, field):
     for i in range(field.height):
         for j in range(field.width):
             f.write(str(field.sqs[i][j].getPoint()) + "\n")
+
+    f.close()
+
+def makeConnect(field):
+    f = open("connect.txt", "w")
+
+    # 1〜4行目：red1,2,blue1,2
 
     f.close()
 
