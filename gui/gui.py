@@ -356,6 +356,8 @@ class DetailFrame(Frame):
         self.init()
 
     def connect(self, event):
+        self.currentTurn += 1
+        self.turnLabel["text"] = str(self.currentTurn) + "/" + str(self.maxTurn)
         makeConnect(self.currentTurn)
 
 # 右側の領域
