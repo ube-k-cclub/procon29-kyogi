@@ -11,6 +11,7 @@ import cv2
 
 # その他
 import numpy as np
+import sys # CLI引数の受け取り
 
 # ------------------------------
 # GUIパーツ
@@ -151,25 +152,45 @@ class Field:
         self.pown[1].setFg(2)
 
 class GearSwitch:
-    index = -1
-    gear = 0
-    gearButton = [None for i in range(3)]
+    gear = [0, 0]
+    switchTitle = [None for i in range(2)]
+    gearButton = [[None for i in range(3)] for j in range(2)]
 
-    def __init__(self, master, index):
-        self.index = index
-        self.switchTitle = Label(
-            master,
-            text = "Gear Player" + str(index + 1),
-            )
-        self.switchTitle.grid()
-        for i in range(3):
-            self.gearButton[i] = Button(
+    def __init__(self, master):
+        for i in range(2):
+            self.switchTitle[i] = Label(
                 master,
-                text = "mode" + str(i+1),
+                text = "Gear Player" + str(i + 1),
                 )
-            # self.gearButton[i].place(x=20+i*72, y=200)
-            self.gearButton[i].grid()
+            self.switchTitle[i].grid()
+            for j in range(3):
+                self.gearButton[i][j] = GearButton(self, master, i, j)
 
+    def clicked(self, player, pushedIndex):
+        if self.gear[player] != pushedIndex:
+            self.gearButton[player][self.gear[player]].button["text"] = "mode" + str(self.gear[player] + 1)
+            self.gearButton[player][self.gear[player]].button.state(['!pressed'])
+            self.gearButton[player][pushedIndex].button["text"] = "mode" + str(pushedIndex + 1) + " *"
+            self.gearButton[player][pushedIndex].button.state(['pressed'])
+            self.gear[player] = pushedIndex
+
+class GearButton:
+    def __init__(self, switch, master, player, index):
+        self.switch = switch
+        self.index = index
+        self.player = player
+        self.button = Button(
+            master,
+            text = "mode" + str(index+1),
+            )
+        self.button.bind("<1>", self.__clicked)
+        if index == 0:
+            self.button.state(['pressed'])
+        self.button.grid()
+
+    def __clicked(self, event):
+        self.switch.clicked(self.player, self.index)
+    
 # ------------------------------
 # 関数定義 
 # ------------------------------
@@ -226,7 +247,6 @@ def readQR(nextfrm):
 class DetailFrame(Frame):
     currentTurn = 1 # 現在のターン
     maxTurn = 60 # 総ターン数
-    gearSwitch = [None, None]
 
     def init(self):
         self.turnLabel = Label(
@@ -234,11 +254,11 @@ class DetailFrame(Frame):
             text=str(self.currentTurn) + "/" + str(self.maxTurn),
             )
         self.turnLabel.grid(row=0, column=0)
-        self.gearSwitch[0] = GearSwitch(self, 0)
-        self.gearSwitch[1] = GearSwitch(self, 1)
+        self.gearSwitch = GearSwitch(self)
 
-    def __init__(self, master = None):
+    def __init__(self, turnNum, master = None):
         self.master = master
+        self.maxTurn = turnNum
         Frame.__init__(self, master)
         self.grid(row=0, column=0)
         self.init()
@@ -261,9 +281,11 @@ class FieldFrame(Frame):
 # main
 # ------------------------------
 def main():
+    args = sys.argv
+
     root = Tk()
     root.title("Lexus - Procon29 solver"); root.geometry("640x480")
-    root.grid_rowconfigure(0, weight=1)
+    root.grid_rowconfigure(0, weight=2)
     root.grid_columnconfigure(0, weight=2)
     root.configure(bg="#161616")
 
@@ -276,7 +298,7 @@ def main():
     readQR(fldfrm)
     fldfrm.grid(row=0, column=1)
 
-    dtlfrm = DetailFrame(root)
+    dtlfrm = DetailFrame(args[1], root)
     dtlfrm.grid(row=0, column=0)
 
     root.mainloop()
