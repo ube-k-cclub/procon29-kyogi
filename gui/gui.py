@@ -240,6 +240,23 @@ def readQR(nextfrm):
             nextfrm.showField()
             break
 
+def makeSetUp(turn, field):
+    f = open('setup.txt', 'w')
+
+    # 1行目：ターン数
+    f.write(str(turn) + "\n")
+    # 2行目：width 3行目：height
+    f.write(str(field.width) + "\n")
+    f.write(str(field.height) + "\n")
+    # 4行目：プレイヤーカラー
+    f.write(str(OWN) + "\n")
+    # 5行目〜：パネルのポイント
+    for i in range(field.height):
+        for j in range(field.width):
+            f.write(str(field.sqs[i][j].getPoint()) + "\n")
+
+    f.close()
+
 # ------------------------------
 # フレーム定義
 # ------------------------------
@@ -282,6 +299,7 @@ class FieldFrame(Frame):
 # ------------------------------
 def main():
     args = sys.argv
+    turnNum = args[1]
 
     root = Tk()
     root.title("Lexus - Procon29 solver"); root.geometry("640x480")
@@ -298,7 +316,9 @@ def main():
     readQR(fldfrm)
     fldfrm.grid(row=0, column=1)
 
-    dtlfrm = DetailFrame(args[1], root)
+    makeSetUp(turnNum, fldfrm.field)
+
+    dtlfrm = DetailFrame(turnNum, root)
     dtlfrm.grid(row=0, column=0)
 
     root.mainloop()
