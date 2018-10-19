@@ -346,7 +346,7 @@ struct state3_stage
 			break;
 			//右上
 		case 2:
-			if ((j != 0) && (i != width - 1))
+			if (j != 0 && i != static_cast<int>(width) - 1)
 			{
 				//移動したい場所
 				line[count] = 2;
@@ -360,7 +360,7 @@ struct state3_stage
 			break;
 			//右
 		case 3:
-			if (i != (width - 1))
+			if (i != static_cast<int>(width) - 1)
 			{
 				//移動したい場所
 				line[count] = 3;
@@ -374,7 +374,7 @@ struct state3_stage
 			break;
 			//右下
 		case 4:
-			if ((i != (width - 1)) && (j != (height - 1)))
+			if (i != static_cast<int>(width) - 1 && j != static_cast<int>(height) - 1)
 			{
 				//移動したい場所
 				line[count] = 4;
@@ -388,7 +388,7 @@ struct state3_stage
 			break;
 			//下
 		case 5:
-			if (j != (height - 1))
+			if (j != static_cast<int>(height) - 1)
 			{
 				//移動したい場所
 				line[count] = 5;
@@ -402,7 +402,7 @@ struct state3_stage
 			break;
 			//左下
 		case 6:
-			if ((j != (height - 1)) && (i != 0))
+			if ((j != static_cast<int>(height) - 1) && (i != 0))
 			{
 				//移動したい場所
 				line[count] = 6;
@@ -450,7 +450,6 @@ struct state3_stage
 			count = 0;
 			i = 0;
 			j = 0;
-			int line[4] = {0,0,0,0};
 			finish = false;
 			return avail;
 		}
@@ -462,7 +461,6 @@ struct state3_stage
 			i = 0;
 			j = 0;
 			memcpy(line_tmp, line, sizeof(int[4]));
-			int line[4] = {0,0,0,0};
 
 			//ギアの判定
 			//プレイヤー1
@@ -550,12 +548,12 @@ struct state3_stage
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
 		memcpy(move, root, sizeof(int[4]));
 		//プレイヤー座標に対して斜めの場所をban_tabele_gearに各座標に"3"とする
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
 				//widthが偶数
-				if (width % 2 == 0)
+				if (static_cast<int>(width) % 2 == 0)
 				{
 					//プレイヤー座標が偶数
 					if (player_pos % 2 == 0)
@@ -837,9 +835,9 @@ struct state3_stage
 			}
 		}
 		//各パネルの評価値の決定
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
 				//ポイントとしてベスト
 				if (panel_point[j * width + i] > 4 && panel_point[j * width + i] < 10)
@@ -861,7 +859,7 @@ struct state3_stage
 		//実際に動いてみる
 		player = player_pos;
 		int dir = player;
-		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		for (int i = 0; i < static_cast<int>(sizeof(move) / sizeof(move[0])); i++)
 		{
 			switch (move[i])
 			{
@@ -1047,9 +1045,9 @@ struct state3_stage
 			}
 		}
 		//計算結果
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{	
 				if (ban_table_copy[j * width + i] == static_cast<int>(color))
 				{
@@ -1080,27 +1078,23 @@ struct state3_stage
 		memcpy(move, root, sizeof(int[4]));
 		//std::cout << move[0]<< ","<<move[1]<<","<<move[2]<<","<<move[3]  << std::endl;
 		//外周の得点を高くするようにする。角は点数低く
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
 				//角
-				if ((i == 0 && j == 0) || (j == 0 && i == width - 1) || (j == height - 1 && i == 0) || (j == height - 1 && i == width - 1))
+				if ((i == 0 && j == 0) || (j == 0 && i == static_cast<int>(width) - 1) || (j == static_cast<int>(height) - 1 && i == 0) || (j == static_cast<int>(height) - 1 && i == static_cast<int>(width) - 1))
 				{
 					ban_table_gear[j * width + i] = oth;
 				}
 				//一番外周
-				else if (j == 0 || j == height - 1 || i == 0 || i == width - 1)
+				else if (j == 0 || j == static_cast<int>(height) - 1 || i == 0 || i == static_cast<int>(width) - 1)
 				{
 					ban_table_gear[j * width + i] = outside;
 				}
 				//1マス内側外周
-				else if (j < 2 || j > height - 3 || i < 2 || i > width - 3)
+				else if (j < 2 || j > static_cast<int>(height) - 3 || i < 2 || i > static_cast<int>(width) - 3)
 				{
-					if (j * width + i == 28)
-					{
-						//std::cout <<"!!!!!!!!!!"<< j * width + i << std::endl;
-					}
 					ban_table_gear[j * width + i] = side;
 				}
 				//他
@@ -1111,22 +1105,22 @@ struct state3_stage
 			}
 		}
 		//各パネルの評価値決定
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
 				//ポイントとしてベスト
-				if (panel_point[j * width + i] > 9)
+				if (panel_point[j * static_cast<int>(width) + i] > 9)
 				{
 					ban_table_eva[j * width + i] = best_point * ban_table_gear[j * width + i];
 				}
 				//妥協点
-				else if (panel_point[j * width + i] > 4)
+				else if (panel_point[j * static_cast<int>(width) + i] > 4)
 				{
 					ban_table_eva[j * width + i] = middle_point * ban_table_gear[j * width + i];
 				}
 				//マイナス値よりはいい
-				else if(panel_point[j * width + i] > -1)
+				else if(panel_point[j * static_cast<int>(width) + i] > -1)
 				{
 					ban_table_eva[j * width + i] = bad_point * ban_table_gear[j * width + i];
 				}
@@ -1140,7 +1134,7 @@ struct state3_stage
 		//実際に動いてみる
 		player = player_pos;
 		int dir = player;
-		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		for (int i = 0; i < static_cast<int>(sizeof(move) / sizeof(move[0])); i++)
 		{
 			switch (move[i])
 			{
@@ -1326,11 +1320,11 @@ struct state3_stage
 			}
 		}
 		//計算結果
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
-				if (ban_table_copy[j * width + i] == static_cast<int>(color))
+				if (ban_table_copy[j * static_cast<int>(width) + i] == static_cast<int>(color))
 				{
 					avail += ban_table_eva[j * width + i];
 				}
@@ -1350,7 +1344,7 @@ struct state3_stage
 		//実際に動いてみる
 		player = player_pos;
 		int dir = player;
-		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		for (int i = 0; i < static_cast<int>(sizeof(move) / sizeof(move[0])); i++)
 		{
 			switch (move[i])
 			{
@@ -1531,14 +1525,12 @@ struct state3_stage
 
 		return sum;
 	}
-
-
     //現在の得点の計算
     int calculation(state color,int *table){ //引数には１，２
 		int sum=0;
 		int table_tmp[max_panel];
 		memcpy(table_tmp, table, sizeof(table_tmp));
-		for (int i = 0; i < width * height; i++)
+		for (int i = 0; i < static_cast<int>(width) * static_cast<int>(height); i++)
 		{
 			if (table_tmp[i] == static_cast<int>(color))
 			{
@@ -1568,11 +1560,11 @@ struct state3_stage
 		int sum = 0, time = 0;
 		std::list<int> area;  //計算が遅くなるようであればvectorに変更
 		//横の列を見る
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
-				if (table_tmp[j * height + i] == static_cast<int>(player_color))
+				if (table_tmp[j * static_cast<int>(height) + i] == static_cast<int>(player_color))
 				{
 					count++;
 					if (time == 0)
@@ -1596,20 +1588,20 @@ struct state3_stage
 			}
 			if (count < 2 || time != 3)
 			{
-				for (int k = 0; k < width; k++)
+				for (int k = 0; k < static_cast<int>(width); k++)
 				{
 					area.push_front(j * height + k);
 				}
 			}
 			else
 			{
-				for (int k = 0; k < width; k++)
+				for (int k = 0; k < static_cast<int>(width); k++)
 				{
-					if (table_tmp[j * height + k] == static_cast<int>(player_color))
+					if (table_tmp[j * static_cast<int>(height) + k] == static_cast<int>(player_color))
 					{
 						area.push_front(j * height + k);
 					}
-					if (k == 0 || k == width - 1)
+					if (k == 0 || k == static_cast<int>(width) - 1)
 					{
 						area.push_front(j * height + k);
 					}
@@ -1619,11 +1611,11 @@ struct state3_stage
 			count = 0;
 		}
 		//縦の列を見る
-		for (int j = 0; j < height; j++)
+		for (int j = 0; j < static_cast<int>(height); j++)
 		{
-			for (int i = 0; i < width; i++)
+			for (int i = 0; i < static_cast<int>(width); i++)
 			{
-				if (table_tmp[i * width + j] == static_cast<int>(player_color))
+				if (table_tmp[i * static_cast<int>(width) + j] == static_cast<int>(player_color))
 				{
 					count++;
 					if (time == 0)
@@ -1646,21 +1638,21 @@ struct state3_stage
 			}
 			if (count < 2 || time != 3)
 			{
-				for (int k = 0; k < width; k++)
+				for (int k = 0; k < static_cast<int>(width); k++)
 				{
 					area.push_front(k * width + j);
 				}
 			}
 			else
 			{
-				for (int k = 0; k < width; k++)
+				for (int k = 0; k < static_cast<int>(width); k++)
 				{
 
-					if (table_tmp[k * height + j] == static_cast<int>(player_color))
+					if (table_tmp[k * static_cast<int>(height) + j] == static_cast<int>(player_color))
 					{
 						area.push_front(k * width + j);
 					}
-					if (k == 0 || k == width - 1)
+					if (k == 0 || k == static_cast<int>(width) - 1)
 					{
 						area.push_front(k * width + j);
 					}
@@ -1718,7 +1710,6 @@ struct state3_stage
 			}
 			if (in_area_copy.size() == 0)
 			{
-				std::cout << "領域ポイントはありません" << std::endl;
 				in_area = in_area_copy;
 				break;
 			}
@@ -1785,7 +1776,7 @@ void game(){
 	int *ad;
 
 	//現在のターンが設定したターンよりも少なければ続ける
-	if (turn >= turn_count)
+	if (static_cast<int>(turn) >= turn_count)
 	{
 		ad = s.compute1(p_color);//配列アドレスの確保
 		memcpy(list1, ad, sizeof(list1));
