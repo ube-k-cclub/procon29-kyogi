@@ -12,6 +12,7 @@ import cv2
 # その他
 import numpy as np
 import sys # CLI引数の受け取り
+import os # ソルバの実行
 
 gear = [0, 0]
 field = None
@@ -276,6 +277,15 @@ def readQR(nextfrm):
             nextfrm.showField()
             break
 
+def readOutput():
+    f = open('output.txt', 'r')
+    data = f.readlines()
+
+    for d in data:
+        d.rstrip()
+    
+    f.close()
+
 def makeSetUp(turn):
     global field
 
@@ -356,9 +366,14 @@ class DetailFrame(Frame):
         self.init()
 
     def connect(self, event):
-        self.currentTurn += 1
         self.turnLabel["text"] = str(self.currentTurn) + "/" + str(self.maxTurn)
         makeConnect(self.currentTurn)
+
+        self.currentTurn += 1
+        # ソルバを実行する
+        os.system('./solver.out')
+        # output.txtを読み込んで適用する
+        readOutput()
 
 # 右側の領域
 class FieldFrame(Frame):
