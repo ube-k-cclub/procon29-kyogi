@@ -1872,16 +1872,13 @@ int main(void){
 		}
 	}
 
-	//ここまで来たらセットアップ完了。メインプログラムへ移行
-    game();
-	
-
-
+	//ファイル閉じる
 	con.close();
 	set.close();
 
-	getchar();
-	getchar();
+	//ここまで来たらセットアップ完了。メインプログラムへ移行
+    game();
+	
 
     return 0;
 }
