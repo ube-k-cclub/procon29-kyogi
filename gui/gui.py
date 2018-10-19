@@ -86,7 +86,6 @@ class Square:
             field.startpoint -= 1
             
         else: # 通常移動
-            print("debug")
             # エージェントのいる位置を初めてクリックしたとき
             if self.getState() == ENEMY and field.clicked == -1:
                 # クリックされたマスを保存
