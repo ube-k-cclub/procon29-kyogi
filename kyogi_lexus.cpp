@@ -204,7 +204,6 @@ struct state3_stage
 		int avail[4] = { 0 };
 		state player;
 		int player_pos = 0;
-		int tmp = 0;
 		if (color == static_cast<int>(state::red))
 		{
 			player = state::red;
@@ -1866,7 +1865,7 @@ int main(void){
 			case 4:gear1 = std::stoi(str); break;
 			case 5:gear2 = std::stoi(str); break;
 			case 6:turn_count = std::stoi(str); break;
-			default:ban_table[count - 6] = std::stoi(str); break;
+			default:ban_table[count - 7] = std::stoi(str); break;
 			}
 			count++;
 		}
