@@ -82,7 +82,7 @@ unsigned int state_player[width * height] = {0};
 
 //マスの得点
 //=========================================================UIから
-unsigned int panel_point[width * height] = {0};
+int panel_point[width * height] = {0};
 
 
 //プレイヤーの周りの座標({null、敵パネル、自パネル}, 座標)
@@ -1342,6 +1342,7 @@ int main(void){
     for(int i = 0; i < width * height;i++){
         panel_point[i] = rand() % 20;
     }
+	panel_point[0] = -15;
     /*
     ban_table[0] = 1;
     ban_table[11] = 1;

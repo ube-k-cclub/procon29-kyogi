@@ -64,6 +64,8 @@
 #include <string.h>
 #include <iterator>
 #include <math.h>                                                               
+#include <fstream>
+#include <algorithm>  // std::sort, std::unique
 
 
 
@@ -71,39 +73,46 @@
 
 //盤面のサイズ(生成時の値をこちらに代入)
 //========================================================UIから
-const std::size_t width = 10, height = 10;
+std::size_t width, height;
+
+const int max_panel = 144;
 
 //パネルの位置を保存しておく
-unsigned int ban_table[width * height] = {0};
-
-//プレイヤー座標
-unsigned int state_player[width * height] = {0};
-
+int ban_table[max_panel];//===========================テキスト保持
 
 //マスの得点
 //=========================================================UIから
-unsigned int panel_point[width * height] = {0};
-
-
-//プレイヤーの周りの座標({null、敵パネル、自パネル}, 座標)
-std::pair<int , int> around[9];
-std::pair<int , int> around2[9];
+int panel_point[max_panel];
 
  
-//プレイヤー座標兼初期座標
-//=========================================================UIから
-std::pair<int, int> red1 = std::make_pair(2,1);
-std::pair<int, int> red2 = std::make_pair(7,8);
-std::pair<int, int> blue1 = std::make_pair(2,8);
-std::pair<int, int> blue2 = std::make_pair(7,1);
+//プレイヤーの座標//=======================================================テキスト保持
+int red1 = 12;
+int red2 = 82;
+int blue1 = 17;
+int blue2 = 87;
 
 //ターン数(こっちも代入)　今は仮
 //=========================================================UIから
-static const std::size_t turn = 100;
+std::size_t turn = 100;
+
+//プレイヤーカラー=================================================UIから
+int p_color = 1;  //赤なら１、青なら２をここに入力
 
 //ギア(ギアシステム)
 //=========================================================UIから
-int gear = 1;
+int gear1 = 1;
+int gear2 = 1;
+
+//現在のターン数
+int turn_count = 1;
+
+//各チームの得点
+int my_panel_point = 0;
+int my_area_point = 0;
+int my_sum_point = 0;
+int enemy_panel_point = 0;
+int enemy_area_point = 0;
+int enemy_sum_point = 0;
 
 //入力された座標の色を返す
 int search_color(int num)
@@ -136,19 +145,9 @@ struct state3_stage
 		blue2
 	};
 
-	//プレイヤーの座標
-	int red1 = 12;
-	int red2 = 82;
-	int blue1 = 17;
-	int blue2 = 87;
-
 	//現在の盤面の得点
 	int red_avail;
 	int blue_avail;
-
-	//現在の盤面の評価
-	unsigned int panel_evalution[width * height] = { 0 };
-
 
 	//自陣と敵色の判別
 	state3_stage::state player_color, enemy_color;
@@ -169,20 +168,20 @@ struct state3_stage
 		return rev;
 	}
 
-	void compute1(int level, int color)
+	int* compute1(int color)
 	{
-		player_num player1;
+		const int num = 1;
+		int *ad;
+		int avail[4] = {0};
 		state player;
 		int player_pos = 0;
 		if (color == static_cast<int>(state::red))
 		{
-			player1 = player_num::red1;
 			player = state::red;
 			player_pos = red1;
 		}
 		else if (color == static_cast<int>(state::blue))
 		{
-			player1 = player_num::blue1;
 			player = state::blue;
 			player_pos = blue1;
 		}
@@ -191,56 +190,136 @@ struct state3_stage
 			std::cout << "エラー:プレイヤーの色の判別ができませんでした" << std::endl;
 		}
 
-		switch (gear)
-		{
-		case 1:
-			 move(player, player_pos); //どう動くか
-			break;
-		case 2:
-			break;
-		case 3:
-			break;
-		default:
-			break;
-		}
+		ad = move(player, player_pos, num); //どう動くか
+		memcpy(avail, ad, sizeof(int[4]));
+		std::cout << "こうやって動きたい:" << avail[0] << avail[1] << avail[2] << avail[3] << std::endl;
+
+		return ad;
 	}
 
-	void move(state player, int player_pos_)
+	int* compute2(int color)
 	{
-		static int count_move[4] = {1,1,1,1}; //このcount_moveの要素数は読む深さを現している。初めはすべて"1"
+		const int num = 2;
+		int *ad;
+		int avail[4] = { 0 };
+		state player;
+		int player_pos = 0;
+		int tmp = 0;
+		if (color == static_cast<int>(state::red))
+		{
+			player = state::red;
+			player_pos = red2;
+		}
+		else if (color == static_cast<int>(state::blue))
+		{
+			player = state::blue;
+			player_pos = blue2;
+		}
+		else
+		{
+			std::cout << "エラー:プレイヤーの色の判別ができませんでした" << std::endl;
+		}
 
-		move_range(count_move[0], count_move[1], count_move[2], count_move[3], player_pos_, player);
+		ad = move(player, player_pos, num); //どう動くか
+		memcpy(avail, ad, sizeof(int[4]));
+		std::cout << "こうやって動きたい:" << avail[0] << avail[1] << avail[2] << avail[3] << std::endl;
+
+		return ad;
+	}
+
+	//４ターンで動ける動作を全動作試してる
+	int* move(state player, int player_pos_, int num)
+	{
+		static int next_avail = -1000;
+		static int avail = 0;
+		static int count_move[4] = {0,0,0,0}; //このcount_moveの要素数は読む深さを現している。初めはすべて"1"
+		static int max_eva[4] = { 0,0,0,0 };
+		static bool reset = false;
+		if (num == 2 && !reset)
+		{			
+			next_avail = -1000;
+			avail = 0;
+			count_move[0] = 0;
+			count_move[1] = 0;
+			count_move[2] = 0;
+			count_move[3] = 0;
+			max_eva[0] = 0;
+			max_eva[1] = 0;
+			max_eva[2] = 0;
+			max_eva[3] = 0;
+			reset = true;
+		}
+
+		avail = move_range(count_move[0], count_move[1], count_move[2], count_move[3], player_pos_, player, num);
+
+		//std::cout << avail << std::endl;
+
+		if (avail > next_avail)
+		{
+			next_avail = avail;
+			
+			for (int i = 0; i < 4; i++)
+			{
+				max_eva[i] = count_move[i];
+			}
+		}
+
 		count_move[3]++;
 		if (count_move[3] == 9)
 		{
-			count_move[3] = 1;
+			count_move[3] = 0;
 			count_move[2]++;
 		}
 		if (count_move[2] == 9)
 		{
-			count_move[2] = 1;
+			count_move[2] = 0;
 			count_move[1]++;
 		}
 		if (count_move[1] == 9)
 		{
-			count_move[1] = 1;
+			count_move[1] = 0;
 			count_move[0]++;
 		}
 		if (count_move[0] == 9)
 		{
-		//count_move[0] = 1;count_move[1] = 1;count_move[2] = 1;count_move[3] = 1;
-			return;
+			if (num == 1)
+			{
+				std::cout << "プレイヤー：１ギア:"<<gear1  << "最大値:" << next_avail << " 現在地:" << player_pos_ << std::endl;
+			}
+			else
+			{
+				std::cout << "プレイヤー：２ギア:" << gear2 << "最大値:" << next_avail << " 現在地:" << player_pos_ << std::endl;
+			}
+			return max_eva;
 		}
-		move(player, player_pos_);
+		move(player, player_pos_, num);
 	}
 
-	void move_range(int layer1, int layer2, int layer3, int layer4, int player_pos, state color)
+	//上の続きで壁などにぶつかったルート以外をギアに合わせて点数を評価する
+	int move_range(int layer1, int layer2, int layer3, int layer4, int player_pos, state color, int num)
 	{
+		static int pos_tmp = player_pos;
+		int avail = 0;
 		static int count = 0;
 		static int line[4] = { 0 };
 		int line_tmp[4] = { 0 };
 		static int i = 0, j = 0;
 		static bool finish = false;
+		static bool reset = false;
+		//初期化1
+		if (num == 2 && !reset)
+		{
+			std::cout << "リセット" << std::endl;
+			pos_tmp = player_pos;
+			count = 0;
+			line[0] = 0;
+			line[1] = 0;
+			line[2] = 0;
+			line[3] = 0;
+			i = 0, j = 0;
+			finish = false;
+			reset = true;
+		}
 		j = static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width)));
 		i = static_cast<int>(floor(static_cast<float>(player_pos) - (static_cast<float>(j) * static_cast<float>(width))));
 		if (j < 0) j = 0;
@@ -248,6 +327,9 @@ struct state3_stage
 		state3_stage s;
 		switch (s(count, layer1, layer2, layer3, layer4))
 		{
+			//その場
+		case 0:line[count] = 0;
+			break;
 			//上
 		case 1:
 			if (j != 0)
@@ -371,6 +453,7 @@ struct state3_stage
 			j = 0;
 			int line[4] = {0,0,0,0};
 			finish = false;
+			return avail;
 		}
 		else if(count >= 3)
 		{
@@ -381,57 +464,1116 @@ struct state3_stage
 			j = 0;
 			memcpy(line_tmp, line, sizeof(int[4]));
 			int line[4] = {0,0,0,0};
-			//評価値を測る
-			evalution1(line_tmp, color); //配列の名前だけで配列のアドレスとして機能する
+
+			//ギアの判定
+			//プレイヤー1
+			if (num == 1)
+			{
+				switch (gear1)
+				{
+				case 1:
+					//ギア1：斜め移動多様のはじめの動作
+					//ギア１は計算がいまは甘い
+					//std::cout << "ギア：1" << std::endl;
+					avail = evalution1(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				case 2:
+					//ギア2：外周周りを移動する中盤の動作
+					//std::cout << "ギア：2" << std::endl;
+					avail = evalution2(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				case 3:
+					//ギア3：とにかく高い点数を取りまくる終盤の動作
+					avail = evalution3(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					//avail = evalution3(line_tmp, color, player_pos); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				default:
+					//現在はほかのギアの予定はない
+					break;
+				}
+			}
+			//プレイヤー2
+			else if(num == 2)
+			{
+				switch (gear2)
+				{
+				case 1:
+					//ギア1：斜め移動多様のはじめの動作
+					//ギア１は計算がいまは甘い
+					//std::cout << "ギア：1" << std::endl;
+					avail = evalution1(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				case 2:
+					//ギア2：外周周りを移動する中盤の動作
+					//std::cout << "ギア：2" << std::endl;
+					avail = evalution2(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				case 3:
+					//ギア3：とにかく高い点数を取りまくる終盤の動作
+					avail = evalution3(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					//avail = evalution3(line_tmp, color, player_pos); //配列の名前だけで配列のアドレスとして機能する
+					break;
+				default:
+					//現在はほかのギアの予定はない
+					break;
+				}
+			}
+			else
+			{
+				std::cout << "エラー：プレイヤーナンバーがおかしいです。" << std::endl;
+				exit(1);
+			}
+			return avail;
 		}
 		else
 		{
 			//もう一度回らせる
 			count++;
-			move_range(layer1, layer2, layer3, layer4, player_pos, color);			
+			move_range(layer1, layer2, layer3, layer4, player_pos, color, num);		
 		}
 	}
 
 
-	void evalution1(int *root, state color)
+	//点数で返す(数字がギアと同じ数字)
+	int evalution1(int *root, state color, int player_pos)
 	{
 		int avail = 0;
-		int aa[4] = { 0 };
-		memcpy(aa, root, sizeof(int[4]));
-	
+		int ban_table_gear[max_panel];
+		int ban_table_eva[max_panel];
+		int ban_table_copy[max_panel];
+		int move[4] = {0};
+		int player = 0;
+		const int dia = 3; //探索するプレイヤーから見て斜めの位置に存在するパネルを示す値
+		const int crs = 1; //探索するプレイヤーから見て十字の位置に存在するパネルを示す値
+		const int best_point = 10; //とるパネルの点数としては最高
+		const int middle_point = 5; //とるパネルの点数としては微妙
+		const int worst_point = 0; //とるパネルの点数としては最悪
+		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
+		memcpy(move, root, sizeof(int[4]));
+		//プレイヤー座標に対して斜めの場所をban_tabele_gearに各座標に"3"とする
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				//widthが偶数
+				if (width % 2 == 0)
+				{
+					//プレイヤー座標が偶数
+					if (player_pos % 2 == 0)
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+					}
+					//プレイヤー座標が奇数
+					else
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+					}
+				}
+				//widthが奇数
+				else
+				{
+					//プレイヤー座標が偶数
+					if (player_pos % 2 == 0)
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+					}
+					//プレイヤー座標が奇数
+					else
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		//各パネルの評価値の決定
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				//ポイントとしてベスト
+				if (panel_point[j * width + i] > 4 && panel_point[j * width + i] < 10)
+				{
+					ban_table_eva[j * width + i] = best_point * ban_table_gear[j * width + i];
+				}
+				//妥協点
+				else if(panel_point[j * width + i] > -1 && panel_point[j * width + i] < 17)
+ 				{
+					ban_table_eva[j * width + i] = middle_point * ban_table_gear[j * width + i];
+				}
+				//マイナス値はありえない
+				else
+				{
+					ban_table_eva[j * width + i] = worst_point * ban_table_gear[j * width + i];
+				}	
+			}
+		}
+		//実際に動いてみる
+		player = player_pos;
+		int dir = player;
+		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		{
+			switch (move[i])
+			{
+			case 0:
+				dir = player;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 1:
+				dir = player - width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 2:
+				dir = player - width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 3:
+				dir = player + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 4:
+				dir = player + width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 5:
+				dir = player + width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 6:
+				dir = player + width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 7:
+				dir = player - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 8:
+				dir = player - width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			}
+		}
+		//計算結果
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{	
+				if (ban_table_copy[j * width + i] == static_cast<int>(color))
+				{
+					avail += ban_table_eva[j * width + i];
+				}
+			}
+		}
 
-
-		std::cout << aa[0] <<","<<aa[1]<<","<<aa[2]<<","<<aa[3] << std::endl;
-
+		return avail;
 	}
 
+	int evalution2(int *root, state color, int player_pos)
+	{
+		int avail = 0;
+		int ban_table_gear[max_panel];
+		int ban_table_eva[max_panel];
+		int ban_table_copy[max_panel];
+		int move[4] = { 0 };
+		int player = 0;
+		const int outside = 5; //探索するプレイヤーから見て一番外周の位置に存在するパネルを示す値
+		const int side = 2; //探索するプレイヤーから見て外周の1マス内側の位置に存在するパネルを示す値
+		const int oth = 1; //探索するプレイヤーから見て角か内周の位置に存在するパネルを示す値
+		const int best_point = 10; //とるパネルの点数としては最高
+		const int middle_point = 3; //とるパネルの点数としては微妙
+		const int bad_point = 1; //とるパネルの点数としてはわるい
+		const int worst_point = 0; //とるパネルの点数としては最悪
+		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
+		memcpy(move, root, sizeof(int[4]));
+		//std::cout << move[0]<< ","<<move[1]<<","<<move[2]<<","<<move[3]  << std::endl;
+		//外周の得点を高くするようにする。角は点数低く
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				//角
+				if ((i == 0 && j == 0) || (j == 0 && i == width - 1) || (j == height - 1 && i == 0) || (j == height - 1 && i == width - 1))
+				{
+					ban_table_gear[j * width + i] = oth;
+				}
+				//一番外周
+				else if (j == 0 || j == height - 1 || i == 0 || i == width - 1)
+				{
+					ban_table_gear[j * width + i] = outside;
+				}
+				//1マス内側外周
+				else if (j < 2 || j > height - 3 || i < 2 || i > width - 3)
+				{
+					if (j * width + i == 28)
+					{
+						//std::cout <<"!!!!!!!!!!"<< j * width + i << std::endl;
+					}
+					ban_table_gear[j * width + i] = side;
+				}
+				//他
+				else
+				{
+					ban_table_gear[j * width + i] = oth;
+				}
+			}
+		}
+		//各パネルの評価値決定
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				//ポイントとしてベスト
+				if (panel_point[j * width + i] > 9)
+				{
+					ban_table_eva[j * width + i] = best_point * ban_table_gear[j * width + i];
+				}
+				//妥協点
+				else if (panel_point[j * width + i] > 4)
+				{
+					ban_table_eva[j * width + i] = middle_point * ban_table_gear[j * width + i];
+				}
+				//マイナス値よりはいい
+				else if(panel_point[j * width + i] > -1)
+				{
+					ban_table_eva[j * width + i] = bad_point * ban_table_gear[j * width + i];
+				}
+				//マイナス値はありえない
+				else
+				{
+					ban_table_eva[j * width + i] = worst_point * ban_table_gear[j * width + i];
+				}
+			}
+		}
+		//実際に動いてみる
+		player = player_pos;
+		int dir = player;
+		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		{
+			switch (move[i])
+			{
+			case 0:
+				dir = player;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 1:
+				dir = player - width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 2:
+				dir = player - width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 3:
+				dir = player + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 4:
+				dir = player + width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 5:
+				dir = player + width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 6:
+				dir = player + width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 7:
+				dir = player - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			case 8:
+				dir = player - width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					avail = 0;
+					return avail;
+				}
+				break;
+			}
+		}
+		//計算結果
+		for (int j = 0; j < height; j++)
+		{
+			for (int i = 0; i < width; i++)
+			{
+				if (ban_table_copy[j * width + i] == static_cast<int>(color))
+				{
+					avail += ban_table_eva[j * width + i];
+				}
+			}
+		}
+		return avail;
+	}
+
+	int evalution3(int *root, state color, int player_pos)
+	{
+		int sum = 0;
+		int ban_table_copy[max_panel];
+		int move[4] = { 0 };
+		int player = 0;
+		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
+		memcpy(move, root, sizeof(int[4]));
+		//実際に動いてみる
+		player = player_pos;
+		int dir = player;
+		for (int i = 0; i < sizeof(move) / sizeof(move[0]); i++)
+		{
+			switch (move[i])
+			{
+			case 0:
+				dir = player;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				//自陣の色
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 1:
+				dir = player - width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 2:
+				dir = player - width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 3:
+				dir = player + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 4:
+				dir = player + width + 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 5:
+				dir = player + width;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 6:
+				dir = player + width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 7:
+				dir = player - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			case 8:
+				dir = player - width - 1;
+				//敵の色である
+				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
+				{
+					ban_table_copy[dir] = static_cast<int>(state::null);
+				}
+				//何色でもない
+				else if (ban_table_copy[dir] == static_cast<int>(state::null))
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+					player = dir;
+				}
+				//自陣の色(あり得ない)
+				else
+				{
+					ban_table_copy[dir] = static_cast<int>(color);
+				}
+				break;
+			}
+		}
+		//点数計算=====================================================================対戦相手との比較型のほうがいいかもというかいい
+		sum = calculation(color, ban_table_copy) - calculation(reverse(color), ban_table_copy);
+
+		return sum;
+	}
+
+
     //現在の得点の計算
-    int calculation(state color){ //引数には１，２
+    int calculation(state color,int *table){ //引数には１，２
 		int sum=0;
+		int table_tmp[max_panel];
+		memcpy(table_tmp, table, sizeof(table_tmp));
 		for (int i = 0; i < width * height; i++)
 		{
-			if (ban_table[i] == static_cast<int>(color))
+			if (table_tmp[i] == static_cast<int>(color))
 			{
 				sum += panel_point[i];
 			}
 		}
-		sum += areapoint_sum(color); //領域ポイントの加算
+
+		if (static_cast<int>(color) == p_color)
+		{
+			my_panel_point = sum;
+		}
+		else
+		{
+			enemy_panel_point = sum;
+		}
+
+		sum += areapoint_sum(color,table_tmp); //領域ポイントの加算
 
 		return sum;
     }
-
 	//領域ポイントの計算
-	int areapoint_sum(state player_color)
+	int areapoint_sum(state player_color, int *table)
 	{
+		int table_tmp[max_panel];
+		memcpy(table_tmp, table, sizeof(table_tmp));
+		int count = 0;
 		int sum = 0, time = 0;
 		std::list<int> area;  //計算が遅くなるようであればvectorに変更
-		int count = 0;
 		//横の列を見る
 		for (int j = 0; j < height; j++)
 		{
 			for (int i = 0; i < width; i++)
 			{
-				if (ban_table[j * height + i] == static_cast<int>(player_color))
+				if (table_tmp[j * height + i] == static_cast<int>(player_color))
 				{
 					count++;
 					if (time == 0)
@@ -464,7 +1606,7 @@ struct state3_stage
 			{
 				for (int k = 0; k < width; k++)
 				{
-					if (ban_table[j * height + k] == static_cast<int>(player_color))
+					if (table_tmp[j * height + k] == static_cast<int>(player_color))
 					{
 						area.push_front(j * height + k);
 					}
@@ -482,7 +1624,7 @@ struct state3_stage
 		{
 			for (int i = 0; i < width; i++)
 			{
-				if (ban_table[i * width + j] == static_cast<int>(player_color))
+				if (table_tmp[i * width + j] == static_cast<int>(player_color))
 				{
 					count++;
 					if (time == 0)
@@ -515,7 +1657,7 @@ struct state3_stage
 				for (int k = 0; k < width; k++)
 				{
 
-					if (ban_table[k * height + j] == static_cast<int>(player_color))
+					if (table_tmp[k * height + j] == static_cast<int>(player_color))
 					{
 						area.push_front(k * width + j);
 					}
@@ -562,7 +1704,7 @@ struct state3_stage
 							ex++;
 						}
 					}
-					if (ban_table[check(j, *itr)] == static_cast<int>(player_color))
+					if (table_tmp[check(j, *itr)] == static_cast<int>(player_color))
 					{
 						ex++;
 					}
@@ -597,8 +1739,16 @@ struct state3_stage
 				sum += panel_point[*itr];
 			}
 		}
-
-		std::cout << "sum == " << sum << std::endl;
+		//今計算しているのがプレイヤーの色ならば
+		if (static_cast<int>(player_color) == p_color)
+		{
+			my_area_point = sum;
+		}
+		//今計算しているのが敵プレイヤーの色ならば
+		else
+		{
+			enemy_area_point = sum;
+		}
 
 		return sum;
 	}
@@ -628,40 +1778,110 @@ struct state3_stage
 };
 
 
-game(){
-    int level = 4;
-    //moveは行動、delは除去
-    int move = 1, del = 2;
-    state3_stage s;
+void game(){
 
-	std::cout << "red:1, blue:2" << std::endl;
-	//=================================================UIから
-	int p_color = 1;  //赤なら１、青なら２をここに入力
-	if (p_color == static_cast<int>(state3_stage::state::red))
-	{
-		s.player_color = state3_stage::state::red;
-		s.enemy_color = state3_stage::state::blue;
-	}
-	else
-	{
-		s.player_color = state3_stage::state::blue;
-		s.enemy_color = state3_stage::state::red;
-	}
+	state3_stage s;
+	int list1[4] = {0};
+	int list2[4] = {0};
+	int *ad;
 
-	int turn_count = 0;
-	while (turn > turn_count)
+	//現在のターンが設定したターンよりも少なければ続ける
+	if (turn >= turn_count)
 	{
-		s.compute1(level, p_color);
+		ad = s.compute1(p_color);//配列アドレスの確保
+		memcpy(list1, ad, sizeof(list1));
+		ad = s.compute2(p_color);
+		memcpy(list2, ad, sizeof(list2));
 
-		turn_count++;
+		//メインプログラム終了。GUIへの出力へ移行
+		//現在の全体の点数の計算
+		my_sum_point = s.calculation(state3_stage::state::red, ban_table);
+		enemy_sum_point = s.calculation(state3_stage::state::blue, ban_table);
+
+		std::ofstream ofs("output.txt");
+
+		ofs << my_panel_point << std::endl;
+		ofs << my_area_point << std::endl;
+		ofs << my_sum_point << std::endl;
+		ofs << enemy_panel_point << std::endl;
+		ofs << enemy_area_point << std::endl;
+		ofs << enemy_sum_point << std::endl;
+		ofs << list1[0] << std::endl;
+		ofs << list1[1] << std::endl;
+		ofs << list1[2] << std::endl;
+		ofs << list1[3] << std::endl;
+		ofs << list2[0] << std::endl;
+		ofs << list2[1] << std::endl;
+		ofs << list2[2] << std::endl;
+		ofs << list2[3] << std::endl;
+
+		ofs.close();
+
 	}
 }
 
 int main(void){
-    game();
+	std::ifstream con("connect.txt");
+	std::ifstream set("setup.txt");
+	std::string str;
 
-    getchar();
-    getchar();
+	if (set.fail())
+	{
+		std::cout << "setup.txtが存在しません。動作を終了します。" << std::endl;
+		exit(1);
+	}
+	else
+	{
+		int count = 0;
+		while (getline(set, str))
+		{
+			switch (count)
+			{
+			case 0:turn = std::stoi(str); break;
+			case 1:width = std::stoi(str); break;
+			case 2:height = std::stoi(str); break;
+			case 3:p_color = std::stoi(str); break;
+			default:panel_point[count - 4] = std::stoi(str); break;
+			}
+			count++;
+		}
+	}
+
+	if (con.fail())
+	{
+		std::cout << "connect.txtが存在しません。動作を終了します。" << std::endl;
+		exit(1);
+	}
+	else
+	{
+		int count = 0;
+		while (getline(con, str))
+		{
+			switch (count)
+			{
+			case 0:red1 = std::stoi(str); break;
+			case 1:red2 = std::stoi(str); break;
+			case 2:blue1 = std::stoi(str); break;
+			case 3:blue2 = std::stoi(str); break;
+			case 4:gear1 = std::stoi(str); break;
+			case 5:gear2 = std::stoi(str); break;
+			case 6:turn_count = std::stoi(str); break;
+			default:ban_table[count - 6] = std::stoi(str); break;
+			}
+			count++;
+		}
+	}
+
+	//ここまで来たらセットアップ完了。メインプログラムへ移行
+    game();
+	
+
+
+	con.close();
+	set.close();
+
+	getchar();
+	getchar();
 
     return 0;
 }
