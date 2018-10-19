@@ -162,6 +162,8 @@ class Field:
     pown = [None, None]
     pene = [None, None]
     clicked = -1
+
+    ideal = [[0 for i in range(4)] for j in range(2)]
     
     def __init__(self, data, master):
         self.genField(data, master)
@@ -276,13 +278,33 @@ def readQR(nextfrm):
             nextfrm.showField()
             break
 
-def readOutput():
+def readOutput(dtlfrm):
     f = open('output.txt', 'r')
     data = f.readlines()
 
     for d in data:
         d.rstrip()
+
+    # 1行目：自パネルの合計点
+    dtlfrm.panelp[OWN-1] = int(data[0])
+
+    # 2行目：自領域合計点
+    dtlfrm.areap[OWN-1] = int(data[1])
+
+    # 4行目：敵パネル合計
+    dtlfrm.panelp[ENEMY-1] = int(data[3])
     
+    # 5行目：自領域合計点
+    dtlfrm.areap[ENEMY-1] = int(data[4])
+    
+    # 7~10行目：P1理想手
+    for i in range(4):
+        field.ideal[0][i] = int(data[6+i])
+
+    # 11~14行目：P2理想手
+    for i in range(4):
+        field.ideal[1][i] = int(data[10+i])
+
     f.close()
 
 def makeSetUp(turn):
@@ -343,12 +365,30 @@ class DetailFrame(Frame):
     currentTurn = 1 # 現在のターン
     maxTurn = 60 # 総ターン数
 
+    # ポイントを自陣、敵陣の順に格納
+    panelp = [0, 0]
+    areap = [0, 0]
+
     def init(self):
+        # ターン数表示
         self.turnLabel = Label(
             self,
             text=str(self.currentTurn) + "/" + str(self.maxTurn),
             )
         self.turnLabel.grid(row=0, column=0)
+
+        # ポイント表示
+        self.ownPLabel = Label(
+            self,
+            )
+        self.enePLabel = Label(
+            self,
+            )
+        self.getPoint()
+        self.ownPLabel.grid()
+        self.enePLabel.grid()
+
+        # ギアスイッチ表示
         gearSwitch = GearSwitch(self)
         self.enterButton = Button(
             self,
@@ -372,7 +412,12 @@ class DetailFrame(Frame):
         # ソルバを実行する
         os.system('./solver.out')
         # output.txtを読み込んで適用する
-        readOutput()
+        readOutput(self)
+        self.getPoint()
+
+    def getPoint(self):
+        self.ownPLabel["text"] = "Player " + str(self.panelp[OWN-1]) + "+" + str(self.areap[OWN-1]) + "=" + str(self.panelp[OWN-1] + self.areap[OWN-1])
+        self.enePLabel["text"] = "Enemy " + str(self.panelp[ENEMY-1]) + "+" + str(self.areap[ENEMY-1]) + "=" + str(self.panelp[ENEMY-1] + self.areap[ENEMY-1])
 
 # 右側の領域
 class FieldFrame(Frame):
