@@ -187,6 +187,16 @@ class Field:
         self.pown[1].setState(OWN)
         self.pown[1].player = 1
         self.pown[1].setFg(2)
+    
+    def getIdealSqs(self, agent, index):
+        # TODO: 愚直に実装　座標を計算してマスのインスタンスを返す
+        '''
+        ideal = self.ideal[agent][index]
+        if ideal == 0:
+            return self.pown[agent]
+        elif ideal == 1:
+            return self.pown[agent]
+        '''
 
 class GearSwitch:
     global gear
@@ -236,7 +246,10 @@ class GearButton:
 def dataParse(qdata):
     # データを分割して余分な空白を取り除く
     data = qdata.split(':')
-    data.remove("")
+    try:
+        data.remove("")
+    except ValueError:
+        pass
 
     for i in range(len(data)):
         # データを1つずつのint値に変換してリスト化
@@ -277,6 +290,14 @@ def readQR(nextfrm):
             field = Field(dataParse(fdata), nextfrm)
             nextfrm.showField()
             break
+
+def readFile(nextfrm, filepath):
+    global field
+
+    f = open(filepath, "r")
+    fdata = f.read()
+    field = Field(dataParse(fdata), nextfrm)
+    nextfrm.showField()
 
 def readOutput(dtlfrm):
     f = open('output.txt', 'r')
@@ -453,7 +474,12 @@ def main():
     style.configure(".", background = "#161616")
 
     fldfrm = FieldFrame(root)
-    readQR(fldfrm)
+
+    if args[2] != None:
+        readFile(fldfrm, args[2])
+    else:
+        readQR(fldfrm)
+
     fldfrm.grid(row=0, column=1)
 
     makeSetUp(turnNum)
