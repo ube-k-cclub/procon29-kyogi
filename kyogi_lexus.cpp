@@ -93,7 +93,7 @@ int blue2 = 87;
 
 //ターン数(こっちも代入)　今は仮
 //=========================================================UIから
-std::size_t turn = 100;
+std::size_t turn = 0;
 
 //プレイヤーカラー=================================================UIから
 int p_color = 1;  //赤なら１、青なら２をここに入力
@@ -532,6 +532,7 @@ struct state3_stage
 
 
 	//点数で返す(数字がギアと同じ数字)
+	//斜め、中くらいの点数を取る
 	int evalution1(int *root, state color, int player_pos)
 	{
 		int avail = 0;
@@ -545,6 +546,8 @@ struct state3_stage
 		const int best_point = 10; //とるパネルの点数としては最高
 		const int middle_point = 5; //とるパネルの点数としては微妙
 		const int worst_point = 0; //とるパネルの点数としては最悪
+		const int center = 3;
+		const int out = 1;
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
 		memcpy(move, root, sizeof(int[4]));
 		//プレイヤー座標に対して斜めの場所をban_tabele_gearに各座標に"3"とする
@@ -845,15 +848,25 @@ struct state3_stage
 					ban_table_eva[j * width + i] = best_point * ban_table_gear[j * width + i];
 				}
 				//妥協点
-				else if(panel_point[j * width + i] > -1 && panel_point[j * width + i] < 17)
- 				{
+				else if (panel_point[j * width + i] > -1 && panel_point[j * width + i] < 17)
+				{
 					ban_table_eva[j * width + i] = middle_point * ban_table_gear[j * width + i];
 				}
 				//マイナス値はありえない
 				else
 				{
 					ban_table_eva[j * width + i] = worst_point * ban_table_gear[j * width + i];
-				}	
+				}
+
+				//中心に近いかどうか 
+				if (static_cast<int>(width) / 2 + 2 > j && static_cast<int>(width) / 2 - 2 < j && static_cast<int>(height) / 2 + 2 > i && static_cast<int>(height) / 2 - 2 < i)
+				{
+					ban_table_eva[j * width + i] *= center;
+				}
+				else
+				{
+					ban_table_eva[j * width + i] *= out;
+				}
 			}
 		}
 		//実際に動いてみる
@@ -1058,7 +1071,7 @@ struct state3_stage
 
 		return avail;
 	}
-
+	//外周点数も高め優先
 	int evalution2(int *root, state color, int player_pos)
 	{
 		int avail = 0;
@@ -1332,7 +1345,7 @@ struct state3_stage
 		}
 		return avail;
 	}
-
+	//4ターンで動ける範囲で最高点になるように移動する
 	int evalution3(int *root, state color, int player_pos)
 	{
 		int sum = 0;
