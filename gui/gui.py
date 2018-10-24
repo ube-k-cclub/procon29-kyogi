@@ -38,8 +38,8 @@ class Square:
             background = self.getColor(),
             borderwidth = 3,
             relief = "ridge",
-            font = ("Migu 1C", 18),
-            width = 2,
+            font = ("Migu 1C", 17),
+            width = 3,
             padding = (2, 2)
             )
         self.label.bind("<1>", self.__Lclicked)
@@ -463,7 +463,7 @@ def main():
     turnNum = args[1]
 
     root = Tk()
-    root.title("Lexus - Procon29 solver"); root.geometry("640x480")
+    root.title("Lexus - Procon29 solver"); root.geometry("700x520")
     root.grid_rowconfigure(0, weight=2)
     root.grid_columnconfigure(0, weight=2)
     root.configure(bg="#161616")
