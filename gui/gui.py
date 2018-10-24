@@ -46,10 +46,11 @@ class Square:
         self.label.bind("<2>", self.__Mclicked)
         self.label.bind("<3>", self.__Rclicked)
 
+    # TODO: パネルの色基準ではなくプレイヤーの位置基準にする
     # 左クリックで自陣操作
     def __Lclicked(self, event):
         # エージェントのいる位置を初めてクリックしたとき
-        if self.getState() == OWN and field.clicked == -1:
+        if field.pown[0] == self or field.pown[1] == self) and field.clicked == -1:
             # クリックされたマスを保存
             field.clicked = self
         # 既にエージェントがクリックされた後の場合
@@ -65,7 +66,7 @@ class Square:
             # 指定先が敵陣
             elif self.getState() == ENEMY:
                 self.setState(FREE)
-                self.getField().clicked = -1
+                field.clicked = -1
             # 指定先が空白
             else:
                 self.setState(OWN)
