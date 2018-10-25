@@ -226,9 +226,9 @@ class GearSwitch:
 
     def clicked(self, player, pushedIndex):
         if gear[player] != pushedIndex:
-            self.gearButton[player][gear[player]].button["text"] = "mode" + str(gear[player] + 1)
+            self.gearButton[player][gear[player]].button["text"] = "GEAR" + str(gear[player] + 1)
             self.gearButton[player][gear[player]].button.state(['!pressed'])
-            self.gearButton[player][pushedIndex].button["text"] = "mode" + str(pushedIndex + 1) + " *"
+            self.gearButton[player][pushedIndex].button["text"] = "GEAR" + str(pushedIndex + 1) + " *"
             self.gearButton[player][pushedIndex].button.state(['pressed'])
             gear[player] = pushedIndex
 
@@ -239,7 +239,7 @@ class GearButton:
         self.player = player
         self.button = Button(
             master,
-            text = "gear" + str(index+1),
+            text = "GEAR" + str(index+1),
             )
         self.button.bind("<1>", self.__clicked)
         if index == 0:
@@ -416,7 +416,6 @@ class DetailFrame(Frame):
         self.enePLabel = Label(
             self,
             )
-        self.getPoint()
         self.ownPLabel.grid()
         self.enePLabel.grid()
 
@@ -428,6 +427,20 @@ class DetailFrame(Frame):
             )
         self.enterButton.grid()
         self.enterButton.bind("<1>", self.connect)
+        
+        # ソルバ結果表示
+        self.nextMoveLabel1 = Label(
+            self,
+            text = "Player1 -> " + str(field.ideal[0][0]),
+            )
+        self.nextMoveLabel1.grid()
+        self.nextMoveLabel2 = Label(
+            self,
+            text = "Player2 -> " + str(field.ideal[1][0]),
+            )
+        self.nextMoveLabel2.grid()
+
+        self.update()
 
     def __init__(self, turnNum, master = None):
         self.master = master
@@ -445,9 +458,14 @@ class DetailFrame(Frame):
         os.system('./solver.out')
         # output.txtを読み込んで適用する
         readOutput(self)
-        self.getPoint()
+        self.update()
 
-    def getPoint(self):
+    def update(self):
+        # 次の手を表示するやつ
+        self.nextMoveLabel1["text"] = "Player1 -> " + str(field.ideal[0][0])
+        self.nextMoveLabel2["text"] = "Player2 -> " + str(field.ideal[1][0])
+
+        # ポイントを表示するやつ
         self.ownPLabel["text"] = "Player " + str(self.panelp[OWN-1]) + "+" + str(self.areap[OWN-1]) + "=" + str(self.panelp[OWN-1] + self.areap[OWN-1])
         self.enePLabel["text"] = "Enemy " + str(self.panelp[ENEMY-1]) + "+" + str(self.areap[ENEMY-1]) + "=" + str(self.panelp[ENEMY-1] + self.areap[ENEMY-1])
 
