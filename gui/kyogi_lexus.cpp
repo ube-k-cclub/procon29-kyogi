@@ -191,8 +191,13 @@ struct state3_stage
 		}
 
 		ad = move(player, player_pos, num); //どう動くか
-		memcpy(avail, ad, sizeof(int[4]));
-		std::cout << "こうやって動きたい:" << avail[0] << avail[1] << avail[2] << avail[3] << std::endl;
+		memcpy(avail, ad, sizeof(avail));
+		std::cout << "こうやって動きたい:";
+		for (int i = 0; i < static_cast<int>(sizeof(avail) / sizeof(avail[0])); i++)
+		{
+			std::cout << avail[i];
+		}
+		std::cout << std::endl;
 
 		return ad;
 	}
@@ -231,21 +236,21 @@ struct state3_stage
 	{
 		static int next_avail = -1000;
 		static int avail = 0;
-		static int count_move[4] = {0,0,0,0}; //このcount_moveの要素数は読む深さを現している。初めはすべて"1"
-		static int max_eva[4] = { 0,0,0,0 };
+		static int count_move[4] = {0}; //このcount_moveの要素数は読む深さを現している。初めはすべて"1"
+		static int max_eva[4] = {0};
 		static bool reset = false;
 		if (num == 2 && !reset)
-		{			
+		{
 			next_avail = -1000;
 			avail = 0;
-			count_move[0] = 0;
-			count_move[1] = 0;
-			count_move[2] = 0;
-			count_move[3] = 0;
-			max_eva[0] = 0;
-			max_eva[1] = 0;
-			max_eva[2] = 0;
-			max_eva[3] = 0;
+			for (int i = 0; i < static_cast<int>(sizeof(count_move) / sizeof(count_move[0])); i++)
+			{
+				count_move[i] = 0;
+			}
+			for (int i = 0; i < static_cast<int>(sizeof(max_eva) / sizeof(max_eva[0])); i++)
+			{
+				max_eva[i] = 0;
+			}
 			reset = true;
 		}
 
@@ -257,7 +262,7 @@ struct state3_stage
 		{
 			next_avail = avail;
 			
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < static_cast<int>(sizeof(count_move) / sizeof(count_move[0])); i++)
 			{
 				max_eva[i] = count_move[i];
 			}
@@ -531,6 +536,12 @@ struct state3_stage
 	}
 
 
+	int bestpoint(int point)
+	{
+		//8を最高点として
+
+	}
+
 	//点数で返す(数字がギアと同じ数字)
 	//斜め、中くらいの点数を取る
 	int evalution1(int *root, state color, int player_pos)
@@ -545,11 +556,14 @@ struct state3_stage
 		const int crs = 1; //探索するプレイヤーから見て十字の位置に存在するパネルを示す値
 		const int best_point = 10; //とるパネルの点数としては最高
 		const int middle_point = 5; //とるパネルの点数としては微妙
-		const int worst_point = 0; //とるパネルの点数としては最悪
-		const int center = 3;
-		const int out = 1;
+		const int worst_point = -1; //とるパネルの点数としては最悪
+		const int center = 5;      //内側のパネルを高い点数に
+		const int def = 1;         //外側のパネルを低い点数に
+		const int side = 1;         //外周のパネルを低い点数に
+		const int doubt = -50;      //行ってほしくないマスに
+		const int on = 2;           //移動した先の上下左右に自分のパネルがあったときにこの数でavailを割る
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
-		memcpy(move, root, sizeof(int[4]));
+		memcpy(move, root, sizeof(move));
 		//プレイヤー座標に対して斜めの場所をban_tabele_gearに各座標に"3"とする
 		for (int j = 0; j < static_cast<int>(height); j++)
 		{
@@ -859,14 +873,25 @@ struct state3_stage
 				}
 
 				//中心に近いかどうか 
-				if (static_cast<int>(width) / 2 + 2 > j && static_cast<int>(width) / 2 - 2 < j && static_cast<int>(height) / 2 + 2 > i && static_cast<int>(height) / 2 - 2 < i)
+				if (static_cast<int>(width) - 3 >= j &&  2 <= j && static_cast<int>(height) - 3 >= i && 2 <= i)
 				{
 					ban_table_eva[j * width + i] *= center;
 				}
+				//角ではない
+				else if ((j == 0 && i == 0) || (j == static_cast<int>(height - 1) && i == 0) || (j == 0 && i == static_cast<int>(width - 1)) || (j == static_cast<int>(height - 1) && i == static_cast<int>(width - 1)))
+				{
+					ban_table_eva[j * width + i] = ban_table_eva[j * width + i] * doubt + doubt;
+				}
+				//外周ではないか
+				else if (j == 0 || i == 0 || j == static_cast<int>(height - 1) || i == static_cast<int>(width - 1))
+				{
+					ban_table_eva[j * width + i] *= side;
+				}
 				else
 				{
-					ban_table_eva[j * width + i] *= out;
+					ban_table_eva[j * width + i] *= def;
 				}
+
 			}
 		}
 		//実際に動いてみる
@@ -888,7 +913,7 @@ struct state3_stage
 				{
 					ban_table_copy[dir] = static_cast<int>(color);
 				}
-				//自陣の色(あり得ない)
+				//自陣の色
 				else
 				{
 					avail = 0;
@@ -1062,13 +1087,36 @@ struct state3_stage
 		{
 			for (int i = 0; i < static_cast<int>(width); i++)
 			{	
+				//マスに移動
 				if (ban_table_copy[j * width + i] == static_cast<int>(color))
 				{
-					avail += ban_table_eva[j * width + i];
+					//移動した先の上下左右に自分のパネルの色がないか
+					if ((ban_table_copy[j * width + i + 1] || ban_table_copy[j * width + i - 1] || ban_table_copy[j * width + i - width] || ban_table_copy[j * width + i + width]) == static_cast<int>(color))
+					{
+						avail += static_cast<int>(floor(static_cast<float>(ban_table_eva[j * width + i]) / on));
+					}
+					else
+					{
+						avail += ban_table_eva[j * width + i];
+					}
+				}
+				//パネル除去
+				if (ban_table_copy[j * width + i] != ban_table[j * width + i])
+				{
+					//移動した先の上下左右に自分のパネルの色がないか
+					if ((ban_table_copy[j * width + i + 1] || ban_table_copy[j * width + i - 1] || ban_table_copy[j * width + i - width] || ban_table_copy[j * width + i + width]) == static_cast<int>(color))
+					{
+						avail += static_cast<int>(floor(static_cast<float>(ban_table_eva[j * width + i]) / on));
+					}
+					else
+					{
+						avail += ban_table_eva[j * width + i];
+					}
 				}
 			}
 		}
-
+		if (avail < 0) avail = 0;					
+		std::cout << avail << std::endl;
 		return avail;
 	}
 	//外周点数も高め優先
