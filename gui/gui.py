@@ -8,9 +8,9 @@ from tkinter.ttk import *
 from PIL import Image, ImageTk
 from pyzbar import pyzbar
 import cv2
+import numpy as np
 
 # その他
-import numpy as np
 import sys # CLI引数の受け取り
 import os # ソルバの実行
 
@@ -46,13 +46,13 @@ class Square:
         self.label.bind("<2>", self.__Mclicked)
         self.label.bind("<3>", self.__Rclicked)
 
-    # TODO: パネルの色基準ではなくプレイヤーの位置基準にする
     # 左クリックで自陣操作
     def __Lclicked(self, event):
         # エージェントのいる位置を初めてクリックしたとき
-        if field.pown[0] == self or field.pown[1] == self) and field.clicked == -1:
+        if (field.pown[0] == self or field.pown[1] == self) and field.clicked == -1:
             # クリックされたマスを保存
             field.clicked = self
+
         # 既にエージェントがクリックされた後の場合
         elif field.clicked != -1:
             if field.clicked == self:
@@ -63,6 +63,8 @@ class Square:
                 self.setFg(field.clicked.getPlayer())
                 field.clicked.setFg(0)
                 field.clicked = -1
+                #pownを更新
+                field.pown[self._player-1] = self
             # 指定先が敵陣
             elif self.getState() == ENEMY:
                 self.setState(FREE)
@@ -73,6 +75,8 @@ class Square:
                 self.setFg(field.clicked.getPlayer())
                 field.clicked.setFg(0)
                 field.clicked = -1
+                #pownを更新
+                field.pown[self._player-1] = self
 
     # 右クリックで敵陣操作
     def __Rclicked(self, event):
@@ -81,14 +85,16 @@ class Square:
             self.setState(ENEMY)
             self.setFg(ENEMY1)
             field.startpoint -= 1
+            field.pene[0] = self 
         elif field.startpoint == 1:
             self.setState(ENEMY)
             self.setFg(ENEMY2)
             field.startpoint -= 1
+            field.pene[1] = self
             
         else: # 通常移動
             # エージェントのいる位置を初めてクリックしたとき
-            if self.getState() == ENEMY and field.clicked == -1:
+            if (field.pene[0] == self or field.pene[1] == self) and field.clicked == -1:
                 # クリックされたマスを保存
                 field.clicked = self
             # 既にエージェントがクリックされた後の場合
@@ -101,6 +107,8 @@ class Square:
                     self.setFg(field.clicked.getPlayer())
                     field.clicked.setFg(0)
                     field.clicked = -1
+                    #pownを更新
+                    field.pene[self._player-3] = self
                 # 指定先が自陣
                 elif self.getState() == OWN:
                     self.setState(FREE)
@@ -111,6 +119,8 @@ class Square:
                     self.setFg(field.clicked.getPlayer())
                     field.clicked.setFg(0)
                     field.clicked = -1
+                    #pownを更新
+                    field.pene[self._player-3] = self
 
     # ミスったときの救済
     def __Mclicked(self, event):
@@ -229,7 +239,7 @@ class GearButton:
         self.player = player
         self.button = Button(
             master,
-            text = "mode" + str(index+1),
+            text = "gear" + str(index+1),
             )
         self.button.bind("<1>", self.__clicked)
         if index == 0:
