@@ -255,11 +255,12 @@ struct state3_stage
 		}
 
 		avail = move_range(count_move[0], count_move[1], count_move[2], count_move[3], player_pos_, player, num);
-
+		//if(num == 2)
 		//std::cout << avail << std::endl;
 
 		if (avail > next_avail)
 		{
+			//std::cout << "avail===================!!!!!!!!!!!" <<avail << std::endl;
 			next_avail = avail;
 			
 			for (int i = 0; i < static_cast<int>(sizeof(count_move) / sizeof(count_move[0])); i++)
@@ -267,6 +268,7 @@ struct state3_stage
 				max_eva[i] = count_move[i];
 			}
 		}
+		//std::cout << "avail===================" << next_avail << std::endl;
 
 		count_move[3]++;
 		if (count_move[3] == 9)
@@ -303,7 +305,7 @@ struct state3_stage
 	int move_range(int layer1, int layer2, int layer3, int layer4, int player_pos, state color, int num)
 	{
 		static int pos_tmp = player_pos;
-		int avail = 0;
+		int avail = -1000;
 		static int count = 0;
 		static int line[4] = { 0 };
 		int line_tmp[4] = { 0 };
@@ -476,7 +478,6 @@ struct state3_stage
 				case 1:
 					//ギア1：斜め移動多様のはじめの動作
 					//ギア１は計算がいまは甘い
-					//std::cout << "ギア：1" << std::endl;
 					avail = evalution1(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
 					break;
 				case 2:
@@ -487,6 +488,8 @@ struct state3_stage
 				case 3:
 					//ギア3：とにかく高い点数を取りまくる終盤の動作
 					avail = evalution3(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					//std::cout << avail << std::endl;
+
 					//avail = evalution3(line_tmp, color, player_pos); //配列の名前だけで配列のアドレスとして機能する
 					break;
 				default:
@@ -513,6 +516,7 @@ struct state3_stage
 				case 3:
 					//ギア3：とにかく高い点数を取りまくる終盤の動作
 					avail = evalution3(line_tmp, color, pos_tmp); //配列の名前だけで配列のアドレスとして機能する
+					//std::cout << avail << std::endl;
 					//avail = evalution3(line_tmp, color, player_pos); //配列の名前だけで配列のアドレスとして機能する
 					break;
 				default:
@@ -1401,7 +1405,7 @@ struct state3_stage
 		int move[4] = { 0 };
 		int player = 0;
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
-		memcpy(move, root, sizeof(int[4]));
+		memcpy(move, root, sizeof(move));
 		//実際に動いてみる
 		player = player_pos;
 		int dir = player;
@@ -1609,6 +1613,8 @@ struct state3_stage
 		}
 
 		sum += areapoint_sum(color,table_tmp); //領域ポイントの加算
+		
+
 
 		return sum;
     }
