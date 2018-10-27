@@ -197,7 +197,6 @@ struct state3_stage
 		{
 			std::cout << avail[i];
 		}
-		std::cout << std::endl;
 
 		return ad;
 	}
@@ -290,6 +289,7 @@ struct state3_stage
 		{
 			if (num == 1)
 			{
+				std::cout << "==============================================="<<std::endl;
 				std::cout << "プレイヤー：１ギア:"<<gear1  << "最大値:" << next_avail << " 現在地:" << player_pos_ << std::endl;
 			}
 			else
@@ -315,6 +315,7 @@ struct state3_stage
 		//初期化1
 		if (num == 2 && !reset)
 		{
+			std::cout << std::endl;
 			std::cout << "リセット" << std::endl;
 			pos_tmp = player_pos;
 			count = 0;
@@ -540,12 +541,6 @@ struct state3_stage
 	}
 
 
-	int bestpoint(int point)
-	{
-		//8を最高点として
-
-	}
-
 	//点数で返す(数字がギアと同じ数字)
 	//斜め、中くらいの点数を取る
 	int evalution1(int *root, state color, int player_pos)
@@ -562,7 +557,7 @@ struct state3_stage
 		const int middle_point = 5; //とるパネルの点数としては微妙
 		const int worst_point = -1; //とるパネルの点数としては最悪
 		const int center = 5;      //内側のパネルを高い点数に
-		const int def = 1;         //外側のパネルを低い点数に
+		const int def = 2;         //外側のパネルを低い点数に
 		const int side = 1;         //外周のパネルを低い点数に
 		const int doubt = -50;      //行ってほしくないマスに
 		const int on = 2;           //移動した先の上下左右に自分のパネルがあったときにこの数でavailを割る
@@ -1120,7 +1115,6 @@ struct state3_stage
 			}
 		}
 		if (avail < 0) avail = 0;					
-		std::cout << avail << std::endl;
 		return avail;
 	}
 	//外周点数も高め優先
@@ -1130,70 +1124,348 @@ struct state3_stage
 		int ban_table_gear[max_panel];
 		int ban_table_eva[max_panel];
 		int ban_table_copy[max_panel];
-		int move[4] = { 0 };
+		int move[4] = {0};
 		int player = 0;
-		const int outside = 5; //探索するプレイヤーから見て一番外周の位置に存在するパネルを示す値
-		const int side = 2; //探索するプレイヤーから見て外周の1マス内側の位置に存在するパネルを示す値
-		const int oth = 1; //探索するプレイヤーから見て角か内周の位置に存在するパネルを示す値
+		const int dia = 3; //探索するプレイヤーから見て斜めの位置に存在するパネルを示す値
+		const int crs = 1; //探索するプレイヤーから見て十字の位置に存在するパネルを示す値
 		const int best_point = 10; //とるパネルの点数としては最高
-		const int middle_point = 3; //とるパネルの点数としては微妙
-		const int bad_point = 1; //とるパネルの点数としてはわるい
-		const int worst_point = 0; //とるパネルの点数としては最悪
+		const int middle_point = 5; //とるパネルの点数としては微妙
+		const int worst_point = -1; //とるパネルの点数としては最悪
+		const int center = 5;      //内側のパネルを高い点数に
+		const int def = 2;         //外側のパネルを低い点数に
+		const int side = 1;         //外周のパネルを低い点数に
+		const int doubt = -50;      //行ってほしくないマスに
+		const int on = 2;           //移動した先の上下左右に自分のパネルがあったときにこの数でavailを割る
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
-		memcpy(move, root, sizeof(int[4]));
-		//std::cout << move[0]<< ","<<move[1]<<","<<move[2]<<","<<move[3]  << std::endl;
-		//外周の得点を高くするようにする。角は点数低く
+		memcpy(move, root, sizeof(move));
+		//プレイヤー座標に対して斜めの場所をban_tabele_gearに各座標に"3"とする
 		for (int j = 0; j < static_cast<int>(height); j++)
 		{
 			for (int i = 0; i < static_cast<int>(width); i++)
 			{
-				//角
-				if ((i == 0 && j == 0) || (j == 0 && i == static_cast<int>(width) - 1) || (j == static_cast<int>(height) - 1 && i == 0) || (j == static_cast<int>(height) - 1 && i == static_cast<int>(width) - 1))
+				//widthが偶数
+				if (static_cast<int>(width) % 2 == 0)
 				{
-					ban_table_gear[j * width + i] = oth;
+					//プレイヤー座標が偶数
+					if (player_pos % 2 == 0)
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+					}
+					//プレイヤー座標が奇数
+					else
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+					}
 				}
-				//一番外周
-				else if (j == 0 || j == static_cast<int>(height) - 1 || i == 0 || i == static_cast<int>(width) - 1)
-				{
-					ban_table_gear[j * width + i] = outside;
-				}
-				//1マス内側外周
-				else if (j < 2 || j > static_cast<int>(height) - 3 || i < 2 || i > static_cast<int>(width) - 3)
-				{
-					ban_table_gear[j * width + i] = side;
-				}
-				//他
+				//widthが奇数
 				else
 				{
-					ban_table_gear[j * width + i] = oth;
+					//プレイヤー座標が偶数
+					if (player_pos % 2 == 0)
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+						}
+					}
+					//プレイヤー座標が奇数
+					else
+					{
+						//プレイヤー座標がｊの偶数列
+						if (static_cast<int>(floor(static_cast<float>(player_pos) / static_cast<float>(width))) % 2 == 0)
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+						//プレイヤー座標がｊの奇数列
+						else
+						{
+							//jが偶数
+							if (j % 2 == 0)
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+							}
+							//jが奇数
+							else
+							{
+								//iが偶数
+								if (i % 2 == 0)
+								{
+									ban_table_gear[j * width + i] = dia;
+								}
+								//iが奇数
+								else
+								{
+									ban_table_gear[j * width + i] = crs;
+								}
+							}
+						}
+					}
 				}
 			}
 		}
-		//各パネルの評価値決定
+		//各パネルの評価値の決定
 		for (int j = 0; j < static_cast<int>(height); j++)
 		{
 			for (int i = 0; i < static_cast<int>(width); i++)
 			{
 				//ポイントとしてベスト
-				if (panel_point[j * static_cast<int>(width) + i] > 9)
+				if (panel_point[j * width + i] > 0 && panel_point[j * width + i] < 4)
 				{
 					ban_table_eva[j * width + i] = best_point * ban_table_gear[j * width + i];
 				}
 				//妥協点
-				else if (panel_point[j * static_cast<int>(width) + i] > 4)
+				else if (panel_point[j * width + i] > -1 && panel_point[j * width + i] < 17 && player_num[j * width + i] < -5)
 				{
 					ban_table_eva[j * width + i] = middle_point * ban_table_gear[j * width + i];
-				}
-				//マイナス値よりはいい
-				else if(panel_point[j * static_cast<int>(width) + i] > -1)
-				{
-					ban_table_eva[j * width + i] = bad_point * ban_table_gear[j * width + i];
 				}
 				//マイナス値はありえない
 				else
 				{
 					ban_table_eva[j * width + i] = worst_point * ban_table_gear[j * width + i];
 				}
+
+				//中心に近いかどうか 
+				if (static_cast<int>(width) - 3 >= j &&  2 <= j && static_cast<int>(height) - 3 >= i && 2 <= i)
+				{
+					ban_table_eva[j * width + i] *= center;
+				}
+				//角ではない
+				else if ((j == 0 && i == 0) || (j == static_cast<int>(height - 1) && i == 0) || (j == 0 && i == static_cast<int>(width - 1)) || (j == static_cast<int>(height - 1) && i == static_cast<int>(width - 1)))
+				{
+					ban_table_eva[j * width + i] = ban_table_eva[j * width + i] * doubt + doubt;
+				}
+				//外周ではないか
+				else if (j == 0 || i == 0 || j == static_cast<int>(height - 1) || i == static_cast<int>(width - 1))
+				{
+					ban_table_eva[j * width + i] *= side;
+				}
+				else
+				{
+					ban_table_eva[j * width + i] *= def;
+				}
+
 			}
 		}
 		//実際に動いてみる
@@ -1215,7 +1487,7 @@ struct state3_stage
 				{
 					ban_table_copy[dir] = static_cast<int>(color);
 				}
-				//自陣の色(あり得ない)
+				//自陣の色
 				else
 				{
 					avail = 0;
@@ -1388,13 +1660,36 @@ struct state3_stage
 		for (int j = 0; j < static_cast<int>(height); j++)
 		{
 			for (int i = 0; i < static_cast<int>(width); i++)
-			{
-				if (ban_table_copy[j * static_cast<int>(width) + i] == static_cast<int>(color))
+			{	
+				//マスに移動
+				if (ban_table_copy[j * width + i] == static_cast<int>(color))
 				{
-					avail += ban_table_eva[j * width + i];
+					//移動した先の上下左右に自分のパネルの色がないか
+					if ((ban_table_copy[j * width + i + 1] || ban_table_copy[j * width + i - 1] || ban_table_copy[j * width + i - width] || ban_table_copy[j * width + i + width]) == static_cast<int>(color))
+					{
+						avail += static_cast<int>(floor(static_cast<float>(ban_table_eva[j * width + i]) / on));
+					}
+					else
+					{
+						avail += ban_table_eva[j * width + i];
+					}
+				}
+				//パネル除去
+				if (ban_table_copy[j * width + i] != ban_table[j * width + i])
+				{
+					//移動した先の上下左右に自分のパネルの色がないか
+					if ((ban_table_copy[j * width + i + 1] || ban_table_copy[j * width + i - 1] || ban_table_copy[j * width + i - width] || ban_table_copy[j * width + i + width]) == static_cast<int>(color))
+					{
+						avail += static_cast<int>(floor(static_cast<float>(ban_table_eva[j * width + i]) / on));
+					}
+					else
+					{
+						avail += ban_table_eva[j * width + i];
+					}
 				}
 			}
 		}
+		if (avail < 0) avail = 0;					
 		return avail;
 	}
 	//4ターンで動ける範囲で最高点になるように移動する
@@ -1403,34 +1698,31 @@ struct state3_stage
 		int sum = 0;
 		int ban_table_copy[max_panel];
 		int move[4] = { 0 };
+		static int out = 0;
 		int player = 0;
 		memcpy(ban_table_copy, ban_table, sizeof(ban_table));
 		memcpy(move, root, sizeof(move));
 		//実際に動いてみる
 		player = player_pos;
 		int dir = player;
+		//std::cout << move[0] <<move[1]<<move[2]<<move[3] <<std::endl;
+		//std::cout << out[0] <<out[1]<<out[2]<<out[3]<< std::endl;
+
+		out = -1;
 		for (int i = 0; i < static_cast<int>(sizeof(move) / sizeof(move[0])); i++)
 		{
+			//謎バグ対策
+			if(out > i){
+				break;
+			}
+			else{
+				out = i;
+			}
+			if (static_cast<int>(turn) == turn_count + i - 1){
+				break;
+			}
 			switch (move[i])
 			{
-			case 0:
-				dir = player;
-				//敵の色である
-				if (ban_table_copy[dir] == static_cast<int>(reverse(color)))
-				{
-					ban_table_copy[dir] = static_cast<int>(state::null);
-				}
-				//何色でもない
-				else if (ban_table_copy[dir] == static_cast<int>(state::null))
-				{
-					ban_table_copy[dir] = static_cast<int>(color);
-				}
-				//自陣の色
-				else
-				{
-					ban_table_copy[dir] = static_cast<int>(color);
-				}
-				break;
 			case 1:
 				dir = player - width;
 				//敵の色である
@@ -1584,9 +1876,15 @@ struct state3_stage
 				}
 				break;
 			}
+			if(i == 3){
+				break;
+			}
+				//
+		//std::cout << move[0] <<move[1]<<move[2]<<move[3] << std::endl;
 		}
 		//点数計算=====================================================================対戦相手との比較型のほうがいいかもというかいい
 		sum = calculation(color, ban_table_copy) - calculation(reverse(color), ban_table_copy);
+				//std::cout << move[0] <<move[1]<<move[2]<<move[3] << std::endl;
 
 		return sum;
 	}

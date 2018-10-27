@@ -504,9 +504,9 @@ def main():
 
     fldfrm = FieldFrame(root)
 
-    if args[2] != None:
+    try:
         readFile(fldfrm, args[2])
-    else:
+    except IndexError:
         readQR(fldfrm)
 
     fldfrm.grid(row=0, column=1)
