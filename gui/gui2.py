@@ -20,7 +20,7 @@ field = None
 # GUIパーツ
 # ------------------------------
 FREE, OWN, ENEMY = 0, 1, 2
-OWN1, OWN2, ENEMY1, ENEMY2 = 1, 2, 3, 4
+OWN1, OWN2 = 1, 2
 
 class Square:
     global field
@@ -55,7 +55,7 @@ class Square:
 
         # 既にエージェントがクリックされた後の場合
         elif field.clicked != -1:
-            if field.clicked == self:
+            if self == field.pown[0] or self == field.pown[1]:
                 field.clicked = -1
 
             # 移動先が自陣
@@ -80,47 +80,10 @@ class Square:
 
     # 右クリックで敵陣操作
     def __Rclicked(self, event):
-        # 最初の2回は開始位置の指定を含める
-        if field.startpoint == 2: 
+        if self.getState() == OWN:
+            self.setState(FREE)
+        elif self.getState() == FREE:
             self.setState(ENEMY)
-            self.setFg(ENEMY1)
-            field.startpoint -= 1
-            field.pene[0] = self 
-        elif field.startpoint == 1:
-            self.setState(ENEMY)
-            self.setFg(ENEMY2)
-            field.startpoint -= 1
-            field.pene[1] = self
-            
-        else: # 通常移動
-            # エージェントのいる位置を初めてクリックしたとき
-            if (field.pene[0] == self or field.pene[1] == self) and field.clicked == -1:
-                # クリックされたマスを保存
-                field.clicked = self
-            # 既にエージェントがクリックされた後の場合
-            elif field.clicked != -1:
-                if field.clicked == self:
-                    field.clicked = -1
-
-                # 移動先が敵陣
-                elif self.getState() == ENEMY:
-                    self.setFg(field.clicked.getPlayer())
-                    field.clicked.setFg(0)
-                    field.clicked = -1
-                    #pownを更新
-                    field.pene[self._player-3] = self
-                # 指定先が自陣
-                elif self.getState() == OWN:
-                    self.setState(FREE)
-                    field.clicked = -1
-                # 指定先が空白
-                else:
-                    self.setState(ENEMY)
-                    self.setFg(field.clicked.getPlayer())
-                    field.clicked.setFg(0)
-                    field.clicked = -1
-                    #pownを更新
-                    field.pene[self._player-3] = self
 
     # ミスったときの救済
     def __Mclicked(self, event):
@@ -150,8 +113,6 @@ class Square:
             return "#000000"
         elif self._player == 2:
             return "#8888F5"
-        elif self._player == 3 or self._player == 4:
-            return "#F58888"
         else:
             return "#ffffff"
 
@@ -167,11 +128,9 @@ class Square:
 
 class Field:
     height, width = 12, 12
-    startpoint = 2
     sqs = [[0 for i in range(12)] for j in range(12)] 
 
     pown = [None, None]
-    pene = [None, None]
     clicked = -1
 
     ideal = [[0 for i in range(4)] for j in range(2)]
@@ -199,16 +158,6 @@ class Field:
         self.pown[1].player = 1
         self.pown[1].setFg(2)
     
-    def getIdealSqs(self, agent, index):
-        # TODO: 愚直に実装　座標を計算してマスのインスタンスを返す
-        '''
-        ideal = self.ideal[agent][index]
-        if ideal == 0:
-            return self.pown[agent]
-        elif ideal == 1:
-            return self.pown[agent]
-        '''
-
 class GearSwitch:
     global gear
     switchTitle = [None for i in range(2)]
